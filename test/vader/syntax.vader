@@ -9,6 +9,7 @@ Execute (syntax sets b:current_syntax and guards reload):
   bwipe!
 
 " coverage: syntax.comment_angle
+" coverage: syntax.comment_no_ident
 Execute (angle comment is Comment group):
   new
   setfiletype freemarker
@@ -16,6 +17,15 @@ Execute (angle comment is Comment group):
   normal! 1G05l
   let name = synIDattr(synID(line('.'), col('.'), 1), 'name')
   Assert name =~? 'ftlComment\|Comment'
+  bwipe!
+
+Execute (identifier inside comment is still Comment — not ftlIdentifier):
+  new
+  setfiletype freemarker
+  " Regression: ftlDirective start matched `<#` of `<#--`, painting `rs` as Identifier
+  call setline(1, '<#-- 각 rs 비트 설정은 넣기 -->')
+  let col = stridx(getline(1), 'rs') + 1
+  AssertEqual synIDattr(synID(1, col, 1), 'name'), 'ftlComment'
   bwipe!
 
 " coverage: syntax.comment_square

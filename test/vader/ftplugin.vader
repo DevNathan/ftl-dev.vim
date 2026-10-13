@@ -42,3 +42,24 @@ Execute (match_words when matchit is loaded):
   Assert ftl_dev#ft#match_words_defined()
   Assert b:match_words =~# '<#if'
   bwipe!
+
+" coverage: ftplugin.auto_close_parse
+Execute (parse_pairable recognizes block opens):
+  Assert !empty(ftl_dev#close#parse_pairable('<#attempt>'))
+  Assert !empty(ftl_dev#close#parse_pairable('  <#if x>'))
+  Assert empty(ftl_dev#close#parse_pairable('<#recover>'))
+  Assert empty(ftl_dev#close#parse_pairable('<#assign x = 1>'))
+  Assert !empty(ftl_dev#close#parse_pairable('<#assign x>'))
+
+" coverage: ftplugin.auto_close_cr
+Execute (Enter after <#attempt> inserts closer):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=4 expandtab
+  call setline(1, '<#attempt>')
+  call cursor(1, col('$'))
+  call ftl_dev#close#expand_cr()
+  AssertEqual getline(1), '<#attempt>'
+  AssertEqual getline(2), '    '
+  AssertEqual getline(3), '</#attempt>'
+  bwipe!

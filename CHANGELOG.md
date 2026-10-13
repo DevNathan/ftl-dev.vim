@@ -6,6 +6,17 @@ Canonical version file: [`VERSION`](VERSION). Independent of the VS Code extensi
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-13
+
+### Added
+
+- Block auto-close (VS Code parity): `>` / `]` pairs closers; Enter on an open-tag line inserts body + `</#…>`
+- `let g:ftl_dev_auto_close = 0` to disable
+
+### Fixed
+
+- Comments no longer steal directive highlighting: `<#--` is excluded from `ftlDirective` start (`\#%(--\)\@!`), so words like `rs` inside comments stay Comment
+
 ## [0.2.0] - 2026-10-13
 
 First coherent release. Consolidates the 0.1.x hotfix mess into one runtime that loads cleanly and paints correctly on light and dark terminal themes.

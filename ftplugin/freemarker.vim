@@ -8,7 +8,7 @@ setlocal commentstring=<#--\ %s\ -->
 setlocal comments=s:<#--,e:-->
 setlocal matchpairs+=<:>
 
-" matchit: FTL block pairs (HTML tags still via html matchit if loaded)
+" matchit: FTL block pairs
 if exists("loaded_matchit")
   let b:match_words =
         \ '<#if\>:<#elseif\>:<#else\>:</#if>,' .
@@ -25,15 +25,23 @@ if exists("loaded_matchit")
         \ '\[#function\]:\[/#function\]'
 endif
 
-" Auto-close ${ → }
+" ${ → }
 inoremap <buffer> ${ ${}<Left>
 
-" Simple directive close hint: after typing </#  use omni / LSP; keep lightweight
-" gf for quoted include/import paths on the line
+" Block auto-close (VS Code parity). Disable: let g:ftl_dev_auto_close = 0
+inoremap <silent><buffer><expr> <CR> ftl_dev#close#cr()
+inoremap <silent><buffer> > ><C-R>=ftl_dev#close#after_bracket('>')<CR>
+inoremap <silent><buffer> ] ]<C-R>=ftl_dev#close#after_bracket(']')<CR>
+
+" gf for quoted include/import paths
 setlocal include=\\v\\[#<]#\\s*(include\|import)\\s+[\"']
 setlocal includeexpr=ftl_dev#ft#strip_include_quotes(v:fname)
 setlocal suffixesadd=.ftl,.ftlh,.ftlx
 
 let b:undo_ftplugin =
       \ "setlocal commentstring< comments< matchpairs< include< includeexpr< suffixesadd<"
+      \ . " | silent! iunmap <buffer> ${"
+      \ . " | silent! iunmap <buffer> <CR>"
+      \ . " | silent! iunmap <buffer> >"
+      \ . " | silent! iunmap <buffer> ]"
       \ . " | unlet! b:match_words"
