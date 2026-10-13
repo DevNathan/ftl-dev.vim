@@ -46,6 +46,19 @@ Then `:PlugInstall`.
 
 Highlight groups are **layered** (`ftlDirKeyword`, `ftlIdentifier`, `ftlMethod`, `ftlBuiltin`, …) and **linked to the colorscheme** (`Statement`, `Identifier`, `Function`, `Special`, …). Do not hardcode near-white `guifg` — that vanishes on light terminal themes. Override with `:hi link ftlIdentifier MyGroup` if you want custom colours.
 
+### Auto-close + indent
+
+Block opens (`<#if>`, `<#attempt>`, `<#macro>`, …) get VS Code–style pairing:
+
+- Type `>` (or `]`) on an open tag → inserts `</#…>` and leaves the caret between
+- Press Enter on a finished open-tag line → body line + closer
+
+Indent (`indentexpr`) stays — it is useful once closers exist. Disable pairing with:
+
+```vim
+let g:ftl_dev_auto_close = 0
+```
+
 ## Tests
 
 ```bash

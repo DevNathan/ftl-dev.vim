@@ -37,7 +37,10 @@
     { "id": "syntax.load_clean", "file": "syntax/freemarker.vim" },
 
     { "id": "syntax.comment_angle", "file": "syntax/freemarker.vim" },
+    { "id": "syntax.comment_no_ident", "file": "syntax/freemarker.vim" },
     { "id": "syntax.comment_square", "file": "syntax/freemarker.vim" },
+    { "id": "ftplugin.auto_close_parse", "file": "autoload/ftl_dev/close.vim" },
+    { "id": "ftplugin.auto_close_cr", "file": "autoload/ftl_dev/close.vim" },
     { "id": "syntax.directive_if", "file": "syntax/freemarker.vim" },
     { "id": "syntax.interpolation", "file": "syntax/freemarker.vim" },
     { "id": "syntax.user_directive", "file": "syntax/freemarker.vim" },

@@ -40,8 +40,10 @@ syn match ftlUserName /@[a-zA-Z_][a-zA-Z0-9_.]*/ contained
 syn cluster ftlExpr contains=ftlStringD,ftlStringS,ftlBuiltin,ftlMethod,ftlIdentifier,ftlNumber,ftlOperator,ftlBoolean
 
 " transparent regions — only contained groups paint
-syn region ftlDirective start=/<\/\?#/ end=/\/\?>/ transparent keepend contains=ftlDirKeyword,@ftlExpr
-syn region ftlDirectiveSquare start=/\[\/\?#/ end=/\/\?]/ transparent keepend contains=ftlDirKeyword,@ftlExpr
+" CRITICAL: `/<\/\?#/` alone also matches the `<#` of comments `<#--…-->`, so
+" identifiers inside comments (e.g. `rs`) get ftlIdentifier colour. Exclude `--`.
+syn region ftlDirective start=/<\/\?#\%(--\)\@!/ end=/\/\?>/ transparent keepend contains=ftlDirKeyword,@ftlExpr
+syn region ftlDirectiveSquare start=/\[\/\?#\%(--\)\@!/ end=/\/\?]/ transparent keepend contains=ftlDirKeyword,@ftlExpr
 syn region ftlUserDirective start=/<\/\?@/ end=/\/\?>/ transparent keepend contains=ftlUserName,@ftlExpr
 syn region ftlUserDirectiveSquare start=/\[\/\?@/ end=/\/\?]/ transparent keepend contains=ftlUserName,@ftlExpr
 syn region ftlInterpolation start="${" end="}" transparent keepend contains=@ftlExpr
