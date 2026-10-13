@@ -1,0 +1,13 @@
+---
+description: Git remotes and push/fetch MUST use SSH only — never HTTPS
+alwaysApply: true
+---
+
+# Git: SSH only
+
+- **NEVER** use `https://github.com/...` for `git remote`, `git push`, `git fetch`, `git pull`, or one-off push URLs.
+- If SSH fails (`Permission denied (publickey)`), **stop** and tell the user. Do not invent an HTTPS fallback.
+
+| Remote | URL |
+|--------|-----|
+| `origin` | `git@github.com:DevNathan/ftl-dev.vim.git` |
