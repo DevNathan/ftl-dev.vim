@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Vim and Neovim
+        run: sudo apt-get update && sudo apt-get install -y vim-nox neovim python3
+      - name: Run tests (100% inventory coverage)
+        run: bash test/run.sh

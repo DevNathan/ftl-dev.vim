@@ -1,8 +1,8 @@
 # Changelog — ftl-dev.vim
 
-User-facing notes for the **Vim / Neovim** FreeMarker runtime (`ftl-dev.vim`).
+User-facing notes for the **Vim / Neovim** FreeMarker runtime.
 
-Versioning is **independent** of the VS Code extension. Canonical file: [`VERSION`](VERSION). Process (monorepo docs): https://github.com/DevNathan/ftl-dev/blob/main/docs/versioning-vim.md
+Canonical version file: [`VERSION`](VERSION). Independent of the VS Code extension ([ftl-dev](https://github.com/DevNathan/ftl-dev)).
 
 ## [Unreleased]
 
