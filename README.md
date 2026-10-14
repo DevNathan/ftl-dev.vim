@@ -59,7 +59,7 @@ Indent (`indentexpr`) stays — it is useful once closers exist. Disable pairing
 let g:ftl_dev_auto_close = 0
 ```
 
-Indent width follows your Vim settings (`shiftwidth` / `expandtab` / `tabstop`). With `expandtab`, Tab inserts spaces (not a tab character); add `set softtabstop=-1` in your vimrc if you want Backspace to remove one indent level at a time. Real tabs: `setlocal noexpandtab tabstop=4 shiftwidth=4`.
+Indent follows normal Vim rules via `indentexpr` plus your `shiftwidth` / `expandtab` / `tabstop` / `softtabstop`. The plugin does not invent its own pad characters on Enter.
 
 ### Comment toggle
 

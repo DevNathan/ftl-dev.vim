@@ -66,7 +66,8 @@ Execute (cr() must not return Cmd literal — ships as text on old Vim):
   Assert keys !~? 'Cmd'
   Assert keys !~# 'ftl_dev#close'
   Assert keys =~# '</#attempt>'
-  Assert keys =~# "\<CR>"
+  " Structural keys only (closer + reindent); may use Esc/o/O rather than CR
+  Assert keys =~# "\<Esc>"
   bwipe!
 
 " coverage: ftplugin.auto_close_cr
@@ -77,11 +78,11 @@ Execute (insert-mode CR mapping closes attempt without Cmd spam):
   setlocal shiftwidth=4 expandtab
   " Pre-seed open tag: typing '>' would trigger after_bracket same-line closer
   call setline(1, '<#attempt>')
-  call feedkeys("A\<CR>\<Esc>", 'xt')
+  call feedkeys("A\<CR>x\<Esc>", 'xt')
   Assert join(getline(1, '$'), "\n") !~? 'Cmd'
   Assert join(getline(1, '$'), "\n") !~# 'expand_cr'
   AssertEqual '<#attempt>', getline(1)
-  AssertEqual '    ', getline(2)
+  AssertEqual '    x', getline(2)
   AssertEqual '</#attempt>', getline(3)
   AssertEqual 2, line('.')
   bwipe!
@@ -94,14 +95,13 @@ Execute (CR between same-line assign pair splits with body indent):
   setlocal shiftwidth=4 expandtab
   call setline(1, '<#assign></#assign>')
   call cursor(1, strlen('<#assign>') + 1)
-  call feedkeys("i\<CR>\<Esc>", 'xt')
+  " Type a char before Esc — Vim drops autoindent on a blank line when leaving insert.
+  call feedkeys("i\<CR>x\<Esc>", 'xt')
   AssertEqual '<#assign>', getline(1)
-  AssertEqual '    ', getline(2)
+  AssertEqual '    x', getline(2)
   AssertEqual '</#assign>', getline(3)
   AssertEqual 3, line('$')
   AssertEqual 2, line('.')
-  " After Esc, cursor rests on last indent char (not short of indent).
-  AssertEqual 4, col('.')
   bwipe!
 
 " coverage: ftplugin.auto_close_cr_same_line
@@ -112,12 +112,11 @@ Execute (CR between nested same-line assign keeps parent indent):
   setlocal shiftwidth=4 expandtab
   call setline(1, '  <#assign></#assign>')
   call cursor(1, strlen('  <#assign>') + 1)
-  call feedkeys("i\<CR>\<Esc>", 'xt')
+  call feedkeys("i\<CR>x\<Esc>", 'xt')
   AssertEqual '  <#assign>', getline(1)
-  AssertEqual '      ', getline(2)
+  AssertEqual '      x', getline(2)
   AssertEqual '  </#assign>', getline(3)
   AssertEqual 2, line('.')
-  AssertEqual 6, col('.')
   bwipe!
 
 " Nested under #if (screenshot case): closer must not fall to column 0
@@ -127,11 +126,11 @@ Execute (CR between assign pair nested under if aligns closer to assign):
   setlocal shiftwidth=2 expandtab
   call setline(1, ['<#if x>', '  <#-- c -->', '  <#assign></#assign>'])
   call cursor(3, strlen('  <#assign>') + 1)
-  call feedkeys("i\<CR>\<Esc>", 'xt')
+  call feedkeys("i\<CR>x\<Esc>", 'xt')
   AssertEqual '<#if x>', getline(1)
   AssertEqual '  <#-- c -->', getline(2)
   AssertEqual '  <#assign>', getline(3)
-  AssertEqual '    ', getline(4)
+  AssertEqual '    x', getline(4)
   AssertEqual '  </#assign>', getline(5)
   AssertEqual 4, line('.')
   bwipe!
@@ -144,9 +143,9 @@ Execute (CR between same-line if and list pairs):
   setlocal shiftwidth=4 expandtab
   call setline(1, '<#if x></#if>')
   call cursor(1, strlen('<#if x>') + 1)
-  call feedkeys("i\<CR>\<Esc>", 'xt')
+  call feedkeys("i\<CR>x\<Esc>", 'xt')
   AssertEqual '<#if x>', getline(1)
-  AssertEqual '    ', getline(2)
+  AssertEqual '    x', getline(2)
   AssertEqual '</#if>', getline(3)
   AssertEqual 3, line('$')
   bwipe!
@@ -156,9 +155,9 @@ Execute (CR between same-line if and list pairs):
   setlocal shiftwidth=4 expandtab
   call setline(1, '[#list xs as x][/#list]')
   call cursor(1, strlen('[#list xs as x]') + 1)
-  call feedkeys("i\<CR>\<Esc>", 'xt')
+  call feedkeys("i\<CR>x\<Esc>", 'xt')
   AssertEqual '[#list xs as x]', getline(1)
-  AssertEqual '    ', getline(2)
+  AssertEqual '    x', getline(2)
   AssertEqual '[/#list]', getline(3)
   AssertEqual 3, line('$')
   bwipe!
@@ -172,10 +171,10 @@ Execute (CR at EOL of open already closed below indents body only):
   call setline(1, ['<#attempt>', '</#attempt>'])
   set virtualedit=onemore
   call cursor(1, strlen(getline(1)) + 1)
-  call feedkeys("i\<CR>\<Esc>", 'xt')
+  call feedkeys("i\<CR>x\<Esc>", 'xt')
   set virtualedit&
   AssertEqual '<#attempt>', getline(1)
-  AssertEqual '    ', getline(2)
+  AssertEqual '    x', getline(2)
   AssertEqual '</#attempt>', getline(3)
   AssertEqual 3, line('$')
   AssertEqual 1, len(filter(getline(1, '$'), 'v:val =~# "</#attempt>"'))
@@ -189,14 +188,14 @@ Execute (CR at EOL of nested open already closed keeps parent indent):
   call setline(1, ['  <#attempt>', '  </#attempt>'])
   set virtualedit=onemore
   call cursor(1, strlen(getline(1)) + 1)
-  call feedkeys("i\<CR>\<Esc>", 'xt')
+  call feedkeys("i\<CR>x\<Esc>", 'xt')
   set virtualedit&
   AssertEqual '  <#attempt>', getline(1)
-  AssertEqual '      ', getline(2)
+  AssertEqual '      x', getline(2)
   AssertEqual '  </#attempt>', getline(3)
   bwipe!
 
-" noexpandtab + tabstop==shiftwidth: body indent uses a real tab
+" noexpandtab + tabstop==shiftwidth: indentexpr uses a real tab
 Execute (CR body indent uses tab when noexpandtab):
   new
   setfiletype freemarker
@@ -204,10 +203,10 @@ Execute (CR body indent uses tab when noexpandtab):
   call setline(1, ['<#attempt>', '</#attempt>'])
   set virtualedit=onemore
   call cursor(1, strlen(getline(1)) + 1)
-  call feedkeys("i\<CR>\<Esc>", 'xt')
+  call feedkeys("i\<CR>x\<Esc>", 'xt')
   set virtualedit&
   AssertEqual '<#attempt>', getline(1)
-  AssertEqual "\t", getline(2)
+  AssertEqual "\tx", getline(2)
   AssertEqual '</#attempt>', getline(3)
   bwipe!
 
@@ -325,9 +324,9 @@ Execute (CR between bare same-line list pair splits with body indent):
   setlocal shiftwidth=4 expandtab
   call setline(1, '<#list></#list>')
   call cursor(1, strlen('<#list>') + 1)
-  call feedkeys("i\<CR>\<Esc>", 'xt')
+  call feedkeys("i\<CR>x\<Esc>", 'xt')
   AssertEqual '<#list>', getline(1)
-  AssertEqual '    ', getline(2)
+  AssertEqual '    x', getline(2)
   AssertEqual '</#list>', getline(3)
   AssertEqual 3, line('$')
   AssertEqual 2, line('.')
