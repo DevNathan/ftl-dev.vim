@@ -12,19 +12,21 @@ Execute (syntax/freemarker.vim sources with no E866/E475):
   redir => g:ftl_msgs
   silent! setfiletype freemarker
   redir END
-  AssertEqual b:current_syntax, 'freemarker'
+  AssertEqual 'freemarker', b:current_syntax
   Assert g:ftl_msgs !~# 'E866'
   Assert g:ftl_msgs !~# 'E475'
   Assert v:errmsg ==# ''
+  syntax sync fromstart
   " full builtin word — NOT just '?s' ([\w] collection bug)
+  " Use SyntaxAt (synstack prime); raw synID can be stale on Win Vim 9.2.
   let q = stridx(getline(1), '?string') + 1
-  AssertEqual synIDattr(synID(1, q, 1), 'name'), 'ftlBuiltin'
-  let t = stridx(getline(1), '?string') + len('?string')
-  AssertEqual synIDattr(synID(1, t, 1), 'name'), 'ftlBuiltin'
+  AssertEqual 'ftlBuiltin', SyntaxAt(1, q)
+  let t = stridx(getline(1), '?string') + strlen('?string')
+  AssertEqual 'ftlBuiltin', SyntaxAt(1, t)
   let sub = stridx(getline(2), '?substring') + 1
-  AssertEqual synIDattr(synID(2, sub, 1), 'name'), 'ftlBuiltin'
-  let sub_end = stridx(getline(2), '?substring') + len('?substring')
-  AssertEqual synIDattr(synID(2, sub_end, 1), 'name'), 'ftlBuiltin'
+  AssertEqual 'ftlBuiltin', SyntaxAt(2, sub)
+  let sub_end = stridx(getline(2), '?substring') + strlen('?substring')
+  AssertEqual 'ftlBuiltin', SyntaxAt(2, sub_end)
   let a = stridx(getline(1), 'assign') + 1
-  AssertEqual synIDattr(synID(1, a, 1), 'name'), 'ftlDirKeyword'
+  AssertEqual 'ftlDirKeyword', SyntaxAt(1, a)
   bwipe!

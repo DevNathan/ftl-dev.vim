@@ -1,0 +1,85 @@
+" coverage: ftplugin.comment_maps
+Execute (comment maps present by default):
+  new
+  setfiletype freemarker
+  Assert maparg('<LocalLeader>c', 'n') =~# 'ftl_dev#comment#toggle'
+  Assert maparg('<LocalLeader>c', 'x') =~# 'ftl_dev#comment#toggle_visual'
+  Assert b:undo_ftplugin =~# 'nunmap.*LocalLeader>c'
+  Assert b:undo_ftplugin =~# 'xunmap.*LocalLeader>c'
+  bwipe!
+
+" coverage: ftplugin.comment_maps_off
+Execute (comment maps absent when g:ftl_dev_comment_maps is 0):
+  let g:ftl_dev_comment_maps = 0
+  new
+  setfiletype freemarker
+  Assert empty(maparg('<LocalLeader>c', 'n'))
+  Assert empty(maparg('<LocalLeader>c', 'x'))
+  bwipe!
+  unlet g:ftl_dev_comment_maps
+
+" coverage: comment.toggle_line
+Execute (toggle comments hello roundtrip):
+  new
+  setfiletype freemarker
+  call setline(1, 'hello')
+  call ftl_dev#comment#toggle()
+  AssertEqual '<#-- hello -->', getline(1)
+  call ftl_dev#comment#toggle()
+  AssertEqual 'hello', getline(1)
+  bwipe!
+
+" coverage: comment.toggle_indent
+Execute (toggle preserves leading indent):
+  new
+  setfiletype freemarker
+  call setline(1, '  hello')
+  call ftl_dev#comment#toggle()
+  AssertEqual '  <#-- hello -->', getline(1)
+  call ftl_dev#comment#toggle()
+  AssertEqual '  hello', getline(1)
+  bwipe!
+
+" coverage: comment.toggle_blank
+Execute (toggle leaves blank lines alone):
+  new
+  setfiletype freemarker
+  call setline(1, ['hello', '', 'world'])
+  call setpos("'<", [0, 1, 1, 0])
+  call setpos("'>", [0, 3, 1, 0])
+  call ftl_dev#comment#toggle_visual()
+  AssertEqual '<#-- hello -->', getline(1)
+  AssertEqual '', getline(2)
+  AssertEqual '<#-- world -->', getline(3)
+  call setpos("'<", [0, 1, 1, 0])
+  call setpos("'>", [0, 3, 1, 0])
+  call ftl_dev#comment#toggle_visual()
+  AssertEqual 'hello', getline(1)
+  AssertEqual '', getline(2)
+  AssertEqual 'world', getline(3)
+  bwipe!
+
+" coverage: comment.toggle_visual
+Execute (visual toggle comments selection):
+  new
+  setfiletype freemarker
+  call setline(1, ['a', 'b', 'c'])
+  call setpos("'<", [0, 1, 1, 0])
+  call setpos("'>", [0, 2, 1, 0])
+  call ftl_dev#comment#toggle_visual()
+  AssertEqual '<#-- a -->', getline(1)
+  AssertEqual '<#-- b -->', getline(2)
+  AssertEqual 'c', getline(3)
+  bwipe!
+
+" coverage: comment.toggle_mixed
+Execute (mixed range comments uncommented lines only):
+  new
+  setfiletype freemarker
+  call setline(1, ['<#-- a -->', 'b'])
+  call setpos("'<", [0, 1, 1, 0])
+  call setpos("'>", [0, 2, 1, 0])
+  call ftl_dev#comment#toggle_visual()
+  AssertEqual '<#-- a -->', getline(1)
+  AssertEqual '<#-- b -->', getline(2)
+  bwipe!

@@ -1,2 +1,4 @@
 " ftl-dev — detect FreeMarker templates
-au BufRead,BufNewFile *.ftl,*.ftlh,*.ftlx setfiletype freemarker
+" Use `set filetype=` (not setfiletype): Vim runtime ships Fluent for *.ftl and
+" setfiletype will not override an already-detected type.
+au BufRead,BufNewFile *.ftl,*.ftlh,*.ftlx set filetype=freemarker

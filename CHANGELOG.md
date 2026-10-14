@@ -6,6 +6,28 @@ Canonical version file: [`VERSION`](VERSION). Independent of the VS Code extensi
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-14
+
+VS Code (ftl-dev) parity release for auto-close, mid-block indent align, and Windows-friendly tests.
+
+### Added
+
+- `<LocalLeader>c` toggles `<#-- … -->` comments (normal + visual; count in normal mode); disable maps with `let g:ftl_dev_comment_maps = 0` in vimrc before opening `.ftl` buffers
+- Typing `/` inside an unclosed FTL open tag inserts matching `>` or `]` (e.g. `<#assign r = 10 /` → `/>`)
+- Typing `</` / `[/` expands to the matching FTL closer (indent rewrite when alone on the line)
+- Typing `>` / `]` on mid-block (`#elseif` / `#else` / `#recover` / `#case` / `#default` / `#sep`) rewrites indent to the controlling opener (VSIX `alignIndentAfterCloser` parity)
+- Close tags similarly align indent to their opener
+- Windows test runners: `test/run.ps1` (full suite) and `test/dev.ps1` (local rtp smoke)
+
+### Fixed
+
+- Under stock Vim `Comment` (bright blue `#80a0ff`), FTL comments use muted `#6A9955`; named colorschemes still link to `Comment`
+- Enter between a same-line open/close pair (`<#assign>`, `<#if>`, `[#list]`, …) splits with one indented body line and does not insert a second closer
+- Enter at EOL of an open tag that already has a matching closer later indents the body only (no duplicate `</#…>` / `[/#…]`)
+- `>` / `]` auto-close (`after_bracket`) skips when a matching closer already follows on the same line or later in the buffer
+- Builtin `?name` match uses `/[?]…/` so Windows Vim NFA does not mishandle `\?`; Vader syntax asserts use `SyntaxAt` (synstack prime) instead of raw `synID`
+- `.ftl` ftdetect forces `freemarker` over Vim’s Fluent filetype (`set filetype=` not `setfiletype`)
+
 ## [0.3.0] - 2026-10-13
 
 ### Added

@@ -63,5 +63,6 @@ Execute (indent file loads without E518 and sets indentexpr):
   AssertEqual &l:indentexpr, 'GetFreemarkerIndent()'
   call setline(1, ['<#if x>', ''])
   normal! 2G
-  AssertEqual GetFreemarkerIndent(), 2
+  let v:lnum = 2
+  AssertEqual 2, GetFreemarkerIndent()
   bwipe!

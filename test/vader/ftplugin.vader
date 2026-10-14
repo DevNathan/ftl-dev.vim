@@ -52,14 +52,340 @@ Execute (parse_pairable recognizes block opens):
   Assert !empty(ftl_dev#close#parse_pairable('<#assign x>'))
 
 " coverage: ftplugin.auto_close_cr
-Execute (Enter after <#attempt> inserts closer):
+" coverage: ftplugin.auto_close_cr_keys
+Execute (cr() must not return Cmd literal — ships as text on old Vim):
   new
   setfiletype freemarker
   setlocal shiftwidth=4 expandtab
   call setline(1, '<#attempt>')
-  call cursor(1, col('$'))
-  call ftl_dev#close#expand_cr()
-  AssertEqual getline(1), '<#attempt>'
-  AssertEqual getline(2), '    '
-  AssertEqual getline(3), '</#attempt>'
+  " Win32 Vim clamps cursor() past EOL unless virtualedit=onemore
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  let keys = ftl_dev#close#cr()
+  set virtualedit&
+  Assert keys !~? 'Cmd'
+  Assert keys !~# 'ftl_dev#close'
+  Assert keys =~# '</#attempt>'
+  Assert keys =~# "\<CR>"
+  bwipe!
+
+" coverage: ftplugin.auto_close_cr
+" AC5: unclosed open at EOL still inserts body + closer
+Execute (insert-mode CR mapping closes attempt without Cmd spam):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=4 expandtab
+  " Pre-seed open tag: typing '>' would trigger after_bracket same-line closer
+  call setline(1, '<#attempt>')
+  call feedkeys("A\<CR>\<Esc>", 'xt')
+  Assert join(getline(1, '$'), "\n") !~? 'Cmd'
+  Assert join(getline(1, '$'), "\n") !~# 'expand_cr'
+  AssertEqual '<#attempt>', getline(1)
+  AssertEqual '    ', getline(2)
+  AssertEqual '</#attempt>', getline(3)
+  AssertEqual 2, line('.')
+  bwipe!
+
+" coverage: ftplugin.auto_close_cr_same_line
+" AC1: <#assign>|</#assign> Enter → open / indented blank / closer
+Execute (CR between same-line assign pair splits with body indent):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=4 expandtab
+  call setline(1, '<#assign></#assign>')
+  call cursor(1, strlen('<#assign>') + 1)
+  call feedkeys("i\<CR>\<Esc>", 'xt')
+  AssertEqual '<#assign>', getline(1)
+  AssertEqual '    ', getline(2)
+  AssertEqual '</#assign>', getline(3)
+  AssertEqual 3, line('$')
+  AssertEqual 2, line('.')
+  bwipe!
+
+" coverage: ftplugin.auto_close_cr_same_line
+" AC2: <#if> / [#list] same-line pairs
+Execute (CR between same-line if and list pairs):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=4 expandtab
+  call setline(1, '<#if x></#if>')
+  call cursor(1, strlen('<#if x>') + 1)
+  call feedkeys("i\<CR>\<Esc>", 'xt')
+  AssertEqual '<#if x>', getline(1)
+  AssertEqual '    ', getline(2)
+  AssertEqual '</#if>', getline(3)
+  AssertEqual 3, line('$')
+  bwipe!
+
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=4 expandtab
+  call setline(1, '[#list xs as x][/#list]')
+  call cursor(1, strlen('[#list xs as x]') + 1)
+  call feedkeys("i\<CR>\<Esc>", 'xt')
+  AssertEqual '[#list xs as x]', getline(1)
+  AssertEqual '    ', getline(2)
+  AssertEqual '[/#list]', getline(3)
+  AssertEqual 3, line('$')
+  bwipe!
+
+" coverage: ftplugin.auto_close_cr_one_closer
+" AC3: open + closer on next line, Enter at EOL → body indent, one closer
+Execute (CR at EOL of open already closed below indents body only):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=4 expandtab
+  call setline(1, ['<#attempt>', '</#attempt>'])
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  call feedkeys("i\<CR>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '<#attempt>', getline(1)
+  AssertEqual '    ', getline(2)
+  AssertEqual '</#attempt>', getline(3)
+  AssertEqual 3, line('$')
+  AssertEqual 1, len(filter(getline(1, '$'), 'v:val =~# "</#attempt>"'))
+  bwipe!
+
+" coverage: ftplugin.auto_close_cr_one_closer
+" AC4: Enter on blank body between open and close → no extra closer
+Execute (CR on blank body between pair does not add closer):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=4 expandtab
+  call setline(1, ['<#if x>', '', '</#if>'])
+  call cursor(2, 1)
+  call feedkeys("i\<CR>\<Esc>", 'xt')
+  AssertEqual 1, len(filter(getline(1, '$'), 'v:val =~# "</#if>"'))
+  Assert join(getline(1, '$'), "\n") !~# '</#if>\n</#if>'
+  bwipe!
+
+" coverage: ftplugin.auto_close_cr
+" AC6: short assign does not auto-close on Enter
+Execute (CR after short assign does not insert closer):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=4 expandtab
+  call setline(1, '<#assign x = 1>')
+  call feedkeys("A\<CR>\<Esc>", 'xt')
+  AssertEqual '<#assign x = 1>', getline(1)
+  Assert join(getline(1, '$'), "\n") !~# '</#assign>'
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_bracket
+" 1) Generate when unclosed open at EOL
+Execute (after_bracket generates closer for unclosed open at EOL):
+  new
+  setfiletype freemarker
+  call setline(1, '<#list 1..3 as i>')
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  let keys = ftl_dev#close#after_bracket('>')
+  set virtualedit&
+  Assert keys =~# '</#list>'
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_bracket
+" 2) Skip same-line closer (fast-path)
+Execute (after_bracket skips when closer already follows):
+  new
+  setfiletype freemarker
+  call setline(1, '<#if x></#if>')
+  " Insert-mode position after open `>` (before same-line closer)
+  call cursor(1, strlen('<#if x>') + 1)
+  AssertEqual '', ftl_dev#close#after_bracket('>')
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_bracket
+" 3) Skip when matching closer on next line (Bug A)
+Execute (after_bracket skips when closer is on next line):
+  new
+  setfiletype freemarker
+  call setline(1, ['<#list 1..3 as i>', '</#list>'])
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  AssertEqual '', ftl_dev#close#after_bracket('>')
+  set virtualedit&
+  " Type the open's `>` with closer already below — must not duplicate </#list>
+  call setline(1, ['<#list 1..3 as i', '</#list>'])
+  call cursor(1, strlen(getline(1)))
+  call feedkeys("a>\<Esc>", 'xt')
+  AssertEqual '<#list 1..3 as i>', getline(1)
+  AssertEqual '</#list>', getline(2)
+  AssertEqual 1, len(filter(getline(1, '$'), 'v:val =~# "</#list>"'))
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_bracket
+" 4) Skip when g:ftl_dev_auto_close = 0
+Execute (after_bracket respects g:ftl_dev_auto_close off):
+  new
+  setfiletype freemarker
+  let g:ftl_dev_auto_close = 0
+  call setline(1, '<#list 1..3 as i>')
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  AssertEqual '', ftl_dev#close#after_bracket('>')
+  set virtualedit&
+  unlet g:ftl_dev_auto_close
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_bracket
+" 5) Square: skip when [/#list] follows on next line
+Execute (after_bracket skips square closer on next line):
+  new
+  setfiletype freemarker
+  call setline(1, ['[#list 1..3 as i]', '[/#list]'])
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  AssertEqual '', ftl_dev#close#after_bracket(']')
+  set virtualedit&
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_bracket
+" 6) Non-pairable mid-block → no closer keys
+Execute (after_bracket skips mid-block else):
+  new
+  setfiletype freemarker
+  call setline(1, '<#else>')
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  AssertEqual '', ftl_dev#close#after_bracket('>')
+  set virtualedit&
+  bwipe!
+
+" coverage: ftplugin.auto_close_cr_same_line
+" Bug B: bare <#list>|</#list> Enter → open / body indent / closer
+Execute (CR between bare same-line list pair splits with body indent):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=4 expandtab
+  call setline(1, '<#list></#list>')
+  call cursor(1, strlen('<#list>') + 1)
+  call feedkeys("i\<CR>\<Esc>", 'xt')
+  AssertEqual '<#list>', getline(1)
+  AssertEqual '    ', getline(2)
+  AssertEqual '</#list>', getline(3)
+  AssertEqual 3, line('$')
+  AssertEqual 2, line('.')
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_slash
+" coverage: ftplugin.auto_close_after_slash_self
+" Case 1: <#assign r = 10 / → insert >
+Execute (after_slash self-close angle assign inserts >):
+  new
+  setfiletype freemarker
+  call setline(1, '<#assign r = 10 /')
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  AssertEqual '>', ftl_dev#close#after_slash()
+  set virtualedit&
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_slash_self
+" Case 1 square: [#assign / → insert ]
+Execute (after_slash self-close square assign inserts ]):
+  new
+  setfiletype freemarker
+  call setline(1, '[#assign /')
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  AssertEqual ']', ftl_dev#close#after_slash()
+  set virtualedit&
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_slash_self
+Execute (after_slash self-close skips when > already follows):
+  new
+  setfiletype freemarker
+  call setline(1, '<#assign  />')
+  call cursor(1, strlen('<#assign  /') + 1)
+  AssertEqual '', ftl_dev#close#after_slash()
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_slash_self
+Execute (imap / self-closes assign to />):
+  new
+  setfiletype freemarker
+  call setline(1, '<#assign r = 10 ')
+  call feedkeys("A/\<Esc>", 'xt')
+  AssertEqual '<#assign r = 10 />', getline(1)
+  bwipe!
+
+  new
+  setfiletype freemarker
+  call setline(1, '[#assign ')
+  call feedkeys("A/\<Esc>", 'xt')
+  AssertEqual '[#assign /]', getline(1)
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_slash
+" coverage: ftplugin.auto_close_after_slash_ftl
+" Case 2 same-line: append name+closer after `/`
+Execute (after_slash mid-line </ appends #assign>):
+  new
+  setfiletype freemarker
+  call setline(1, '<#assign><')
+  call feedkeys("A/\<Esc>", 'xt')
+  AssertEqual '<#assign></#assign>', getline(1)
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_slash_ftl
+Execute (imap </ after nested opens uses innermost):
+  new
+  setfiletype freemarker
+  call setline(1, ['<#if x>', '<#list y as z>', '<'])
+  call cursor(3, 1)
+  call feedkeys("A/\<Esc>", 'xt')
+  AssertEqual '</#list>', getline(3)
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_slash_ftl
+Execute (same-line <#if></ expands to </#if>):
+  new
+  setfiletype freemarker
+  call setline(1, '<#if x><')
+  call feedkeys("A/\<Esc>", 'xt')
+  AssertEqual '<#if x></#if>', getline(1)
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_slash
+" coverage: ftplugin.auto_close_after_slash_indent
+" AC6: alone on line rewrites indent to match opener
+Execute (imap </ alone on line rewrites indent to opener):
+  new
+  setfiletype freemarker
+  set virtualedit=onemore
+  call setline(1, ['<#if x>', '  body', '    <'])
+  call cursor(3, strlen(getline(3)) + 1)
+  call feedkeys("a/\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '<#if x>', getline(1)
+  AssertEqual '  body', getline(2)
+  AssertEqual '</#if>', getline(3)
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_slash_indent
+Execute (imap [/ alone on line uses nested opener indent):
+  new
+  setfiletype freemarker
+  set virtualedit=onemore
+  call setline(1, ['[#if a]', '  [#list xs as x]', '    item', '    ['])
+  call cursor(4, strlen(getline(4)) + 1)
+  call feedkeys("a/\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '  [/#list]', getline(4)
+  bwipe!
+
+" coverage: ftplugin.auto_close_after_slash
+Execute (after_slash respects g:ftl_dev_auto_close off):
+  new
+  setfiletype freemarker
+  let g:ftl_dev_auto_close = 0
+  call setline(1, '<#assign /')
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  AssertEqual '', ftl_dev#close#after_slash()
+  unlet g:ftl_dev_auto_close
+  set virtualedit&
   bwipe!
