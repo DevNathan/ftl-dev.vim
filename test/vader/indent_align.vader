@@ -1,0 +1,233 @@
+" Port of vsix indentAlign.test.ts + AC10–AC12.
+
+" coverage: indent_align.after_closer
+" coverage: indent_align.elseif
+" AC1: elseif → if indent align on `>`
+Execute (elseif at body indent aligns to if):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#if note?has_content>', '  ${note}', '  <#elseif title?has_content'])
+  set virtualedit=onemore
+  call cursor(3, strlen(getline(3)) + 1)
+  call feedkeys("a>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '<#if note?has_content>', getline(1)
+  AssertEqual '  ${note}', getline(2)
+  AssertEqual '<#elseif title?has_content>', getline(3)
+  Assert join(getline(1, '$'), "\n") !~# "\n  <#elseif"
+  bwipe!
+
+" coverage: indent_align.else
+" AC2: else → if/list
+Execute (else at body indent aligns to if):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#if x>', '  yes', '  <#else'])
+  set virtualedit=onemore
+  call cursor(3, strlen(getline(3)) + 1)
+  call feedkeys("a>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual "<#if x>\n  yes\n<#else>", join(getline(1, '$'), "\n")
+  bwipe!
+
+Execute (else under list aligns to list):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#list xs as x>', '  ${x}', '  <#else'])
+  set virtualedit=onemore
+  call cursor(3, strlen(getline(3)) + 1)
+  call feedkeys("a>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '<#else>', getline(3)
+  bwipe!
+
+" coverage: indent_align.nested_else
+" AC3: nested else → inner if
+Execute (nested else aligns to inner if):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#if a>', '  <#if b>', '    x', '    <#else'])
+  set virtualedit=onemore
+  call cursor(4, strlen(getline(4)) + 1)
+  call feedkeys("a>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '  <#else>', getline(4)
+  Assert join(getline(1, '$'), "\n") !~# "\n    <#else"
+  bwipe!
+
+" coverage: indent_align.recover
+" AC4: recover → attempt
+Execute (recover aligns to attempt):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#attempt>', '  risky', '  <#recover'])
+  set virtualedit=onemore
+  call cursor(3, strlen(getline(3)) + 1)
+  call feedkeys("a>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '<#recover>', getline(3)
+  bwipe!
+
+" coverage: indent_align.recover_same_line
+" AC5: same-line `  <#recover>|</#attempt>` still aligns
+Execute (recover aligns with same-line </#attempt>):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  " Cursor between recover and existing closer; typing `>` aligns indent.
+  call setline(1, ['<#attempt>', '  <#recover</#attempt>'])
+  call cursor(2, strlen('  <#recover') + 1)
+  call feedkeys("i>\<Esc>", 'xt')
+  AssertEqual '<#attempt>', getline(1)
+  AssertEqual '<#recover></#attempt>', getline(2)
+  bwipe!
+
+" coverage: indent_align.close_tag
+" AC6: close tag align to opener
+Execute (close if aligns to opener):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#if x>', '  body', '  </#if'])
+  set virtualedit=onemore
+  call cursor(3, strlen(getline(3)) + 1)
+  call feedkeys("a>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual "<#if x>\n  body\n</#if>", join(getline(1, '$'), "\n")
+  bwipe!
+
+Execute (close attempt after recover aligns to attempt):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#attempt>', '  risky', '<#recover>', '  handle', '  </#attempt'])
+  set virtualedit=onemore
+  call cursor(5, strlen(getline(5)) + 1)
+  call feedkeys("a>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual "</#attempt>", getline(5)
+  bwipe!
+
+" coverage: indent_align.noop
+" AC7: already aligned no-op
+Execute (already aligned else is no-op):
+  new
+  setfiletype freemarker
+  call setline(1, ['<#if x>', '  body', '<#else>'])
+  call cursor(3, strlen(getline(3)) + 1)
+  AssertEqual '', ftl_dev#indent_align#after_closer('>')
+  bwipe!
+
+" coverage: indent_align.paren_aware
+" AC8: <#if (x > y)> paren-aware (scanTagEnd)
+Execute (else finds parent when if has paren comparison):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#if (x > y)>', '  yes', '  <#else'])
+  set virtualedit=onemore
+  call cursor(3, strlen(getline(3)) + 1)
+  call feedkeys("a>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '<#else>', getline(3)
+  bwipe!
+
+" coverage: indent_align.square
+" AC9: square brackets
+Execute (square-bracket else aligns):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['[#if x]', '  yes', '  [#else'])
+  set virtualedit=onemore
+  call cursor(3, strlen(getline(3)) + 1)
+  call feedkeys("a]\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual "[#if x]\n  yes\n[#else]", join(getline(1, '$'), "\n")
+  bwipe!
+
+" coverage: indent_align.case_sep
+" AC10: case/default/sep parents
+Execute (case aligns to switch):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#switch x>', '  body', '  <#case 1'])
+  set virtualedit=onemore
+  call cursor(3, strlen(getline(3)) + 1)
+  call feedkeys("a>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '<#case 1>', getline(3)
+  bwipe!
+
+Execute (default aligns to switch):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#switch x>', '  <#case 1>', '    a', '  <#default'])
+  set virtualedit=onemore
+  call cursor(4, strlen(getline(4)) + 1)
+  call feedkeys("a>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '<#default>', getline(4)
+  bwipe!
+
+Execute (sep aligns to list):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#list xs as x>', '  ${x}', '  <#sep'])
+  set virtualedit=onemore
+  call cursor(3, strlen(getline(3)) + 1)
+  call feedkeys("a>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '<#sep>', getline(3)
+  bwipe!
+
+" coverage: indent_align.orchestrator
+" AC11: align-first then after_bracket
+Execute (after_closer aligns else and skips pair):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#if x>', '  yes', '  <#else'])
+  set virtualedit=onemore
+  call cursor(3, strlen(getline(3)) + 1)
+  " Simulate typed `>` already present
+  call setline(3, '  <#else>')
+  call cursor(3, strlen(getline(3)) + 1)
+  let keys = ftl_dev#close#after_closer('>')
+  set virtualedit&
+  Assert keys =~# "\<BS>"
+  Assert keys !~# '</#else>'
+  Assert keys =~# '<#else>'
+  bwipe!
+
+Execute (after_closer falls through to pair when not mid/close):
+  new
+  setfiletype freemarker
+  call setline(1, '<#if x>')
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  let keys = ftl_dev#close#after_closer('>')
+  set virtualedit&
+  Assert keys =~# '</#if>'
+  bwipe!
+
+" coverage: indent_align.keys_only
+" AC12: keys-only from insert maps (no Cmd / no function name spam)
+Execute (after_closer returns keys only):
+  new
+  setfiletype freemarker
+  call setline(1, ['<#if x>', '  yes', '  <#else>'])
+  call cursor(3, strlen(getline(3)) + 1)
+  let keys = ftl_dev#close#after_closer('>')
+  Assert keys !~? 'Cmd'
+  Assert keys !~# 'ftl_dev#'
+  Assert keys !~# 'indent_align'
+  bwipe!

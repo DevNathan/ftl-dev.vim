@@ -3,9 +3,9 @@
 Execute (syntax sets b:current_syntax and guards reload):
   new
   setfiletype freemarker
-  AssertEqual b:current_syntax, 'freemarker'
+  AssertEqual 'freemarker', b:current_syntax
   runtime syntax/freemarker.vim
-  AssertEqual b:current_syntax, 'freemarker'
+  AssertEqual 'freemarker', b:current_syntax
   bwipe!
 
 " coverage: syntax.comment_angle
@@ -25,7 +25,22 @@ Execute (identifier inside comment is still Comment — not ftlIdentifier):
   " Regression: ftlDirective start matched `<#` of `<#--`, painting `rs` as Identifier
   call setline(1, '<#-- 각 rs 비트 설정은 넣기 -->')
   let col = stridx(getline(1), 'rs') + 1
-  AssertEqual synIDattr(synID(1, col, 1), 'name'), 'ftlComment'
+  AssertEqual 'ftlComment', synIDattr(synID(1, col, 1), 'name')
+  bwipe!
+
+" Under -Nu test/vimrc, stock Comment is #80a0ff / ctermfg 11 — FTL comments mute.
+Execute (Nu vimrc mutes stock-blue ftlComment):
+  new
+  setfiletype freemarker
+  call setline(1, '<#-- hello -->')
+  let col = 5
+  let sid = synID(1, col, 1)
+  AssertEqual 'ftlComment', synIDattr(sid, 'name')
+  let guifg = synIDattr(sid, 'fg#')
+  let ctermfg = synIDattr(sid, 'fg', 'cterm')
+  Assert guifg !~? '^#80a0ff$'
+  Assert ctermfg !=# '11'
+  Assert guifg =~? '^#6a9955$' || ctermfg =~? '^\%(8\|DarkGray\)$'
   bwipe!
 
 " coverage: syntax.comment_square
@@ -44,7 +59,7 @@ Execute (<#if keyword is ftlDirKeyword):
   setfiletype freemarker
   call setline(1, '<#if x>')
   let col = stridx(getline(1), 'if') + 1
-  AssertEqual synIDattr(synID(1, col, 1), 'name'), 'ftlDirKeyword'
+  AssertEqual 'ftlDirKeyword', synIDattr(synID(1, col, 1), 'name')
   bwipe!
 
 " coverage: syntax.interpolation
@@ -53,7 +68,7 @@ Execute (${ body identifier):
   setfiletype freemarker
   call setline(1, '${user}')
   let col = stridx(getline(1), 'user') + 1
-  AssertEqual synIDattr(synID(1, col, 1), 'name'), 'ftlIdentifier'
+  AssertEqual 'ftlIdentifier', synIDattr(synID(1, col, 1), 'name')
   bwipe!
 
 " coverage: syntax.user_directive
@@ -62,7 +77,7 @@ Execute (<@macro name is ftlUserName):
   setfiletype freemarker
   call setline(1, '<@banner>')
   let col = stridx(getline(1), 'banner') + 1
-  AssertEqual synIDattr(synID(1, col, 1), 'name'), 'ftlUserName'
+  AssertEqual 'ftlUserName', synIDattr(synID(1, col, 1), 'name')
   bwipe!
 
 " coverage: syntax.builtin
@@ -70,11 +85,14 @@ Execute (?string builtin is full name not just ?s):
   new
   setfiletype freemarker
   call setline(1, '<#assign x = m1.now()?string("y")/>')
+  syntax sync fromstart
   let qcol = stridx(getline(1), '?') + 1
-  AssertEqual synIDattr(synID(1, qcol, 1), 'name'), 'ftlBuiltin'
-  " last letter of string in ?string
+  " SyntaxAt primes synstack — raw synID can return a stale group (e.g. prior
+  " case's ftlUserName) at '?' before the stack is computed on Win Vim 9.2.
+  AssertEqual 'ftlBuiltin', SyntaxAt(1, qcol)
+  " last letter of string in ?string (1-based col of 'g')
   let scol = stridx(getline(1), '?string') + strlen('?string')
-  AssertEqual synIDattr(synID(1, scol, 1), 'name'), 'ftlBuiltin'
+  AssertEqual 'ftlBuiltin', SyntaxAt(1, scol)
   bwipe!
 
 " coverage: syntax.method
@@ -83,12 +101,13 @@ Execute (#assign / var / .method are three groups):
   new
   setfiletype freemarker
   call setline(1, '<#assign ymd = m1.now()?string("y")/>')
+  syntax sync fromstart
   let kcol = stridx(getline(1), 'assign') + 1
-  AssertEqual synIDattr(synID(1, kcol, 1), 'name'), 'ftlDirKeyword'
+  AssertEqual 'ftlDirKeyword', SyntaxAt(1, kcol)
   let ycol = stridx(getline(1), 'ymd') + 1
-  AssertEqual synIDattr(synID(1, ycol, 1), 'name'), 'ftlIdentifier'
+  AssertEqual 'ftlIdentifier', SyntaxAt(1, ycol)
   let mcol = stridx(getline(1), 'm1') + 1
-  AssertEqual synIDattr(synID(1, mcol, 1), 'name'), 'ftlIdentifier'
+  AssertEqual 'ftlIdentifier', SyntaxAt(1, mcol)
   let dcol = stridx(getline(1), '.now') + 1
-  AssertEqual synIDattr(synID(1, dcol, 1), 'name'), 'ftlMethod'
+  AssertEqual 'ftlMethod', SyntaxAt(1, dcol)
   bwipe!

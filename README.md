@@ -50,7 +50,7 @@ Highlight groups are **layered** (`ftlDirKeyword`, `ftlIdentifier`, `ftlMethod`,
 
 Block opens (`<#if>`, `<#attempt>`, `<#macro>`, …) get VS Code–style pairing:
 
-- Type `>` (or `]`) on an open tag → inserts `</#…>` and leaves the caret between
+- Type `>` (or `]`) on an open tag → inserts `</#…>` and leaves the caret between (skips if a matching closer already exists on the same line or later)
 - Press Enter on a finished open-tag line → body line + closer
 
 Indent (`indentexpr`) stays — it is useful once closers exist. Disable pairing with:
@@ -59,13 +59,43 @@ Indent (`indentexpr`) stays — it is useful once closers exist. Disable pairing
 let g:ftl_dev_auto_close = 0
 ```
 
+### Comment toggle
+
+`<LocalLeader>c` toggles FreeMarker comments (`<#-- … -->`) on the current line (normal) or visual selection. In normal mode, a count wraps that many lines from the cursor (e.g. `3<LocalLeader>c`). Leading indent is kept; blank lines are left alone. If every non-blank line in the range is already commented, comments are removed; otherwise only uncommented lines are wrapped (lines already commented stay as-is).
+
+`<LocalLeader>` is `\` by default unless you set `maplocalleader`.
+
+Disable the maps in vimrc (**before** opening a `.ftl` buffer — unlike `g:ftl_dev_auto_close`, this flag is read when the filetype plugin loads):
+
+```vim
+let g:ftl_dev_comment_maps = 0
+```
+
 ## Tests
+
+**Linux / macOS**
 
 ```bash
 bash test/run.sh
 ```
 
-Requires `vim`, `git`, `python3`, and `nvim` (for `lua/ftl_dev/lsp.lua`).
+**Windows (PowerShell)** — requires `vim`, `git`, and `nvim` on `PATH`:
+
+```powershell
+winget install -e --id vim.vim
+winget install -e --id Neovim.Neovim
+# If `vim` is missing after install, add e.g. %LOCALAPPDATA%\Programs\Vim to User PATH, then open a new shell.
+powershell -ExecutionPolicy Bypass -File test/run.ps1
+```
+
+Manual smoke (loads this repo on `runtimepath`, opens a sample `.ftl`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File test/dev.ps1
+powershell -ExecutionPolicy Bypass -File test/dev.ps1 -Nvim
+```
+
+Requires `vim`, `git`, `python3` (bash runner), and `nvim` (for `lua/ftl_dev/lsp.lua`).
 
 The runner:
 

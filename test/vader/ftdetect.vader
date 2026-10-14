@@ -1,23 +1,23 @@
 " coverage: ftdetect.ftl
 Execute (ftdetect .ftl):
   new
-  file /tmp/ftl-dev-test.ftl
+  file ftl-dev-test.ftl
   doautocmd BufRead
-  AssertEqual &filetype, 'freemarker'
+  AssertEqual 'freemarker', &filetype
   bwipe!
 
 " coverage: ftdetect.ftlh
 Execute (ftdetect .ftlh):
   new
-  file /tmp/ftl-dev-test.ftlh
+  file ftl-dev-test.ftlh
   doautocmd BufRead
-  AssertEqual &filetype, 'freemarker'
+  AssertEqual 'freemarker', &filetype
   bwipe!
 
 " coverage: ftdetect.ftlx
 Execute (ftdetect .ftlx):
   new
-  file /tmp/ftl-dev-test.ftlx
+  file ftl-dev-test.ftlx
   doautocmd BufRead
-  AssertEqual &filetype, 'freemarker'
+  AssertEqual 'freemarker', &filetype
   bwipe!

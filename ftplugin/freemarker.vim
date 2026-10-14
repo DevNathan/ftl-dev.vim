@@ -30,8 +30,16 @@ inoremap <buffer> ${ ${}<Left>
 
 " Block auto-close (VS Code parity). Disable: let g:ftl_dev_auto_close = 0
 inoremap <silent><buffer><expr> <CR> ftl_dev#close#cr()
-inoremap <silent><buffer> > ><C-R>=ftl_dev#close#after_bracket('>')<CR>
-inoremap <silent><buffer> ] ]<C-R>=ftl_dev#close#after_bracket(']')<CR>
+" Align mid/close indent first, then HTML-style pair (vsix autoClose).
+inoremap <silent><buffer> > ><C-R>=ftl_dev#close#after_closer('>')<CR>
+inoremap <silent><buffer> ] ]<C-R>=ftl_dev#close#after_closer(']')<CR>
+inoremap <silent><buffer> / /<C-R>=ftl_dev#close#after_slash()<CR>
+
+" Comment toggle. Disable: let g:ftl_dev_comment_maps = 0 (before filetype)
+if get(g:, 'ftl_dev_comment_maps', 1)
+  nnoremap <silent><buffer> <LocalLeader>c :<C-u>call ftl_dev#comment#toggle()<CR>
+  xnoremap <silent><buffer> <LocalLeader>c :<C-u>call ftl_dev#comment#toggle_visual()<CR>
+endif
 
 " gf for quoted include/import paths
 setlocal include=\\v\\[#<]#\\s*(include\|import)\\s+[\"']
@@ -44,4 +52,7 @@ let b:undo_ftplugin =
       \ . " | silent! iunmap <buffer> <CR>"
       \ . " | silent! iunmap <buffer> >"
       \ . " | silent! iunmap <buffer> ]"
+      \ . " | silent! iunmap <buffer> /"
+      \ . " | silent! nunmap <buffer> <LocalLeader>c"
+      \ . " | silent! xunmap <buffer> <LocalLeader>c"
       \ . " | unlet! b:match_words"
