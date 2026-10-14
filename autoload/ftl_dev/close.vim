@@ -193,10 +193,13 @@ function! ftl_dev#close#cr() abort
   let open_before = ftl_dev#close#parse_pairable(before)
 
   " 1) Same-line pair: `<#assign>|</#assign>` → open / indented body / closer
-  " CR splits closer down; Esc O opens body; Ctrl-U + explicit pad (opener indent +
-  " unit) so cursor and line indent match even when indentexpr pad is wrong/empty.
+  " Do not rely on indentexpr for the closer after CR — it often stays at col 0
+  " when nested. Delete the same-line closer, then insert body + opener-aligned closer.
   if !empty(open_before) && s:same_line_closer(after, open_before)
-    return "\<CR>\<Esc>O\<C-u>" . s:body_indent_for(before)
+    let indent = matchstr(before, '^\s*')
+    let body = s:body_indent_for(before)
+    let closer = indent . s:closer_token(open_before)
+    return "\<C-o>d$\<CR>\<C-u>" . body . "\<CR>\<C-u>" . closer . "\<Esc>kA"
   endif
 
   " Non-empty text after cursor (not a same-line closer) → plain CR
