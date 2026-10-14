@@ -50,6 +50,19 @@ Execute (indent decreases for </@macro>):
 Execute (indent clamps negative to 0):
   AssertEqual ftl_dev#indent#compute(2, ['x', '</#if>'], 2), 0
 
+" AC2: outer <#if> still open after nested closer (even at col 0)
+" coverage: indent.compute.nested_outer
+Execute (indent keeps outer open after nested </#if> at col 0):
+  AssertEqual 2, ftl_dev#indent#compute(5, ['<#if outer>', '  <#if inner>', '    x', '</#if>', 'asdf'], 2)
+
+" coverage: indent.compute.nested_attempt
+Execute (indent keeps outer attempt open after nested </#attempt> at col 0):
+  AssertEqual 2, ftl_dev#indent#compute(5, ['<#attempt>', '  <#attempt>', '    x', '</#attempt>', 'y'], 2)
+
+" coverage: indent.compute.nested_capture
+Execute (indent keeps outer capture assign open after nested </#assign> at col 0):
+  AssertEqual 2, ftl_dev#indent#compute(5, ['<#assign outer>', '  <#assign inner>', '    x', '</#assign>', 'y'], 2)
+
 " coverage: indent.guard
 " coverage: indent.keys
 " coverage: indent.expr_wrapper

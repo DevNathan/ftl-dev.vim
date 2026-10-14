@@ -100,6 +100,24 @@ Execute (CR between same-line assign pair splits with body indent):
   AssertEqual '</#assign>', getline(3)
   AssertEqual 3, line('$')
   AssertEqual 2, line('.')
+  " After Esc, cursor rests on last indent char (not short of indent).
+  AssertEqual 4, col('.')
+  bwipe!
+
+" coverage: ftplugin.auto_close_cr_same_line
+" Nested same-line pair: body indent = opener indent + shiftwidth; cursor on last pad.
+Execute (CR between nested same-line assign keeps parent indent):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=4 expandtab
+  call setline(1, '  <#assign></#assign>')
+  call cursor(1, strlen('  <#assign>') + 1)
+  call feedkeys("i\<CR>\<Esc>", 'xt')
+  AssertEqual '  <#assign>', getline(1)
+  AssertEqual '      ', getline(2)
+  AssertEqual '  </#assign>', getline(3)
+  AssertEqual 2, line('.')
+  AssertEqual 6, col('.')
   bwipe!
 
 " coverage: ftplugin.auto_close_cr_same_line
@@ -145,6 +163,36 @@ Execute (CR at EOL of open already closed below indents body only):
   AssertEqual '</#attempt>', getline(3)
   AssertEqual 3, line('$')
   AssertEqual 1, len(filter(getline(1, '$'), 'v:val =~# "</#attempt>"'))
+  bwipe!
+
+" Nested open already closed: body keeps opener indent + shiftwidth
+Execute (CR at EOL of nested open already closed keeps parent indent):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=4 expandtab
+  call setline(1, ['  <#attempt>', '  </#attempt>'])
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  call feedkeys("i\<CR>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '  <#attempt>', getline(1)
+  AssertEqual '      ', getline(2)
+  AssertEqual '  </#attempt>', getline(3)
+  bwipe!
+
+" noexpandtab + tabstop==shiftwidth: body indent uses a real tab
+Execute (CR body indent uses tab when noexpandtab):
+  new
+  setfiletype freemarker
+  setlocal noexpandtab tabstop=4 shiftwidth=4 softtabstop=0
+  call setline(1, ['<#attempt>', '</#attempt>'])
+  set virtualedit=onemore
+  call cursor(1, strlen(getline(1)) + 1)
+  call feedkeys("i\<CR>\<Esc>", 'xt')
+  set virtualedit&
+  AssertEqual '<#attempt>', getline(1)
+  AssertEqual "\t", getline(2)
+  AssertEqual '</#attempt>', getline(3)
   bwipe!
 
 " coverage: ftplugin.auto_close_cr_one_closer

@@ -6,6 +6,15 @@ Canonical version file: [`VERSION`](VERSION). Independent of the VS Code extensi
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-14
+
+### Fixed
+
+- `indentexpr` uses an open-block stack so after nested closers, still-open outer blocks keep body indent (not column 0)
+- Enter between a same-line open/close pair places the cursor after opener-indent + one unit (no longer shiftwidth-only pad)
+- Enter on a nested open tag indents the body by opener indent + one unit (spaces or tab per `expandtab`)
+- Alone-on-line `</` / `[/` rewrite replaces the line with Esc+`cc`+CTRL-U (safe with `softtabstop`)
+
 ## [0.4.0] - 2026-10-14
 
 VS Code (ftl-dev) parity release for auto-close, mid-block indent align, and Windows-friendly tests.

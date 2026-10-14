@@ -59,6 +59,8 @@ Indent (`indentexpr`) stays — it is useful once closers exist. Disable pairing
 let g:ftl_dev_auto_close = 0
 ```
 
+Indent width follows your Vim settings (`shiftwidth` / `expandtab` / `tabstop`). With `expandtab`, Tab inserts spaces (not a tab character); add `set softtabstop=-1` in your vimrc if you want Backspace to remove one indent level at a time. Real tabs: `setlocal noexpandtab tabstop=4 shiftwidth=4`.
+
 ### Comment toggle
 
 `<LocalLeader>c` toggles FreeMarker comments (`<#-- … -->`) on the current line (normal) or visual selection. In normal mode, a count wraps that many lines from the cursor (e.g. `3<LocalLeader>c`). Leading indent is kept; blank lines are left alone. If every non-blank line in the range is already commented, comments are removed; otherwise only uncommented lines are wrapped (lines already commented stay as-is).
