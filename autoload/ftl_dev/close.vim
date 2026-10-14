@@ -166,20 +166,7 @@ function! ftl_dev#close#enabled() abort
   return get(g:, 'ftl_dev_auto_close', 1)
 endfunction
 
-" One indent level: spaces when expandtab, else a tab (when sw == tabstop).
-function! s:indent_unit() abort
-  if &l:expandtab || shiftwidth() != &l:tabstop
-    return repeat(' ', shiftwidth())
-  endif
-  return "\t"
-endfunction
-
-" Body line indent = opener leading whitespace + one indent unit.
-function! s:body_indent_for(line) abort
-  return matchstr(a:line, '^\s*') . s:indent_unit()
-endfunction
-
-" Insert-mode <CR> expr: pairable open → body + closer (when still unclosed).
+" Insert-mode <CR> expr: structural pair ops only — indent comes from indentexpr.
 " Must RETURN keys (not append()) — buffer edits from <expr> maps raise E565.
 " Do NOT return "\<Cmd>…" — older Vim inserts that text literally.
 function! ftl_dev#close#cr() abort
@@ -192,14 +179,10 @@ function! ftl_dev#close#cr() abort
   let after = strpart(line, col - 1)
   let open_before = ftl_dev#close#parse_pairable(before)
 
-  " 1) Same-line pair: `<#assign>|</#assign>` → open / indented body / closer
-  " Do not rely on indentexpr for the closer after CR — it often stays at col 0
-  " when nested. Delete the same-line closer, then insert body + opener-aligned closer.
+  " 1) Same-line pair: `<#assign>|</#assign>`
+  " CR moves closer down; == / CTRL-F reindent via indentexpr (no hand-built pads).
   if !empty(open_before) && s:same_line_closer(after, open_before)
-    let indent = matchstr(before, '^\s*')
-    let body = s:body_indent_for(before)
-    let closer = indent . s:closer_token(open_before)
-    return "\<C-o>d$\<CR>\<C-u>" . body . "\<CR>\<C-u>" . closer . "\<Esc>kA"
+    return "\<CR>\<Esc>==O\<C-f>"
   endif
 
   " Non-empty text after cursor (not a same-line closer) → plain CR
@@ -212,18 +195,16 @@ function! ftl_dev#close#cr() abort
     return "\<CR>"
   endif
 
-  let indent = matchstr(line, '^\s*')
-  let body = s:body_indent_for(line)
-  let closer = indent . s:closer_token(open)
+  let token = s:closer_token(open)
 
-  " 2) Open EOL + still unclosed → body + closer
-  " CTRL-U clears indentexpr pad; body includes opener indent + one unit.
+  " 2) Open EOL + still unclosed → closer below, then body above it.
+  " Avoid Esc on an empty body line (Vim strips autoindent when leaving insert).
   if ftl_dev#close#is_open_still_unclosed(line('.'), open)
-    return "\<CR>\<C-u>" . body . "\<CR>\<C-u>" . closer . "\<Esc>kA"
+    return "\<Esc>o" . token . "\<Esc>==O\<C-f>"
   endif
 
-  " 3) Open EOL + already closed later → Enter + body indent only
-  return "\<CR>\<C-u>" . body
+  " 3) Open EOL + already closed later → Enter + CTRL-F (indentexpr)
+  return "\<CR>\<C-f>"
 endfunction
 
 function! ftl_dev#close#expand_cr() abort
@@ -234,16 +215,16 @@ function! ftl_dev#close#expand_cr() abort
   if empty(open)
     return
   endif
-  let indent = matchstr(line, '^\s*')
-  let body = s:body_indent_for(line)
   if !ftl_dev#close#is_open_still_unclosed(lnum, open)
-    call append(lnum, [body])
-    call cursor(lnum + 1, strlen(body) + 1)
+    call append(lnum, [''])
+    execute (lnum + 1) . 'normal! =='
+    call cursor(lnum + 1, col('$'))
     return
   endif
-  let closer = indent . s:closer_token(open)
-  call append(lnum, [body, closer])
-  call cursor(lnum + 1, strlen(body) + 1)
+  call append(lnum, ['', s:closer_token(open)])
+  execute (lnum + 1) . 'normal! =='
+  execute (lnum + 2) . 'normal! =='
+  call cursor(lnum + 1, col('$'))
 endfunction
 
 " After typing `>` / `]`: align mid/close indent first; else HTML-style pair.

@@ -6,6 +6,12 @@ Canonical version file: [`VERSION`](VERSION). Independent of the VS Code extensi
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-10-14
+
+### Changed
+
+- Enter auto-close only does pair structure (`CR` / `O` / closer token + `==`); indent is left to `indentexpr` and the user’s `expandtab` / `shiftwidth` / `softtabstop` (no more hand-built space pads)
+
 ## [0.4.2] - 2026-10-14
 
 ### Fixed
