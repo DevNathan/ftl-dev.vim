@@ -166,8 +166,17 @@ function! ftl_dev#close#enabled() abort
   return get(g:, 'ftl_dev_auto_close', 1)
 endfunction
 
-function! s:body_indent() abort
-  return repeat(' ', shiftwidth())
+" One indent level: spaces when expandtab, else a tab (when sw == tabstop).
+function! s:indent_unit() abort
+  if &l:expandtab || shiftwidth() != &l:tabstop
+    return repeat(' ', shiftwidth())
+  endif
+  return "\t"
+endfunction
+
+" Body line indent = opener leading whitespace + one indent unit.
+function! s:body_indent_for(line) abort
+  return matchstr(a:line, '^\s*') . s:indent_unit()
 endfunction
 
 " Insert-mode <CR> expr: pairable open → body + closer (when still unclosed).
@@ -184,10 +193,10 @@ function! ftl_dev#close#cr() abort
   let open_before = ftl_dev#close#parse_pairable(before)
 
   " 1) Same-line pair: `<#assign>|</#assign>` → open / indented body / closer
+  " CR splits closer down; Esc O opens body; Ctrl-U + explicit pad (opener indent +
+  " unit) so cursor and line indent match even when indentexpr pad is wrong/empty.
   if !empty(open_before) && s:same_line_closer(after, open_before)
-    let body = s:body_indent()
-    " CR splits closer onto next line; O opens body above it.
-    return "\<CR>\<C-o>O\<C-u>" . body
+    return "\<CR>\<Esc>O\<C-u>" . s:body_indent_for(before)
   endif
 
   " Non-empty text after cursor (not a same-line closer) → plain CR
@@ -201,11 +210,11 @@ function! ftl_dev#close#cr() abort
   endif
 
   let indent = matchstr(line, '^\s*')
-  let body = s:body_indent()
+  let body = s:body_indent_for(line)
   let closer = indent . s:closer_token(open)
 
   " 2) Open EOL + still unclosed → body + closer
-  " CTRL-U clears indentexpr pad so body/closer use shiftwidth once each.
+  " CTRL-U clears indentexpr pad; body includes opener indent + one unit.
   if ftl_dev#close#is_open_still_unclosed(line('.'), open)
     return "\<CR>\<C-u>" . body . "\<CR>\<C-u>" . closer . "\<Esc>kA"
   endif
@@ -223,7 +232,7 @@ function! ftl_dev#close#expand_cr() abort
     return
   endif
   let indent = matchstr(line, '^\s*')
-  let body = indent . repeat(' ', shiftwidth())
+  let body = s:body_indent_for(line)
   if !ftl_dev#close#is_open_still_unclosed(lnum, open)
     call append(lnum, [body])
     call cursor(lnum + 1, strlen(body) + 1)
@@ -325,9 +334,10 @@ function! ftl_dev#close#after_slash() abort
     let close_start = strlen(before) - 2
     let prefix = strpart(line, 0, close_start)
     " AC6: rewrite indent when `</` / `[/` is alone on the line.
+    " Esc+cc replaces the line; CTRL-U drops cc's autoindent pad, then opener indent.
     if prefix !~# '\S'
       let indent = matchstr(getline(top.lnum), '^\s*')
-      return repeat("\<BS>", col - 1) . indent . token
+      return "\<Esc>cc\<C-u>" . indent . token
     endif
     " Same-line / mid-line: keep prefix; append name + closer after `/`.
     return top.name . close_br
