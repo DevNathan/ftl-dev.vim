@@ -6,6 +6,12 @@ Canonical version file: [`VERSION`](VERSION). Independent of the VS Code extensi
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-14
+
+### Fixed
+
+- Enter between a nested same-line open/close pair rewrites the closer with the opener indent (no longer left at column 0)
+
 ## [0.4.1] - 2026-10-14
 
 ### Fixed

@@ -105,7 +105,7 @@ Execute (CR between same-line assign pair splits with body indent):
   bwipe!
 
 " coverage: ftplugin.auto_close_cr_same_line
-" Nested same-line pair: body indent = opener indent + shiftwidth; cursor on last pad.
+" Nested same-line pair: body indent = opener indent + shiftwidth; closer aligns to opener.
 Execute (CR between nested same-line assign keeps parent indent):
   new
   setfiletype freemarker
@@ -118,6 +118,22 @@ Execute (CR between nested same-line assign keeps parent indent):
   AssertEqual '  </#assign>', getline(3)
   AssertEqual 2, line('.')
   AssertEqual 6, col('.')
+  bwipe!
+
+" Nested under #if (screenshot case): closer must not fall to column 0
+Execute (CR between assign pair nested under if aligns closer to assign):
+  new
+  setfiletype freemarker
+  setlocal shiftwidth=2 expandtab
+  call setline(1, ['<#if x>', '  <#-- c -->', '  <#assign></#assign>'])
+  call cursor(3, strlen('  <#assign>') + 1)
+  call feedkeys("i\<CR>\<Esc>", 'xt')
+  AssertEqual '<#if x>', getline(1)
+  AssertEqual '  <#-- c -->', getline(2)
+  AssertEqual '  <#assign>', getline(3)
+  AssertEqual '    ', getline(4)
+  AssertEqual '  </#assign>', getline(5)
+  AssertEqual 4, line('.')
   bwipe!
 
 " coverage: ftplugin.auto_close_cr_same_line
