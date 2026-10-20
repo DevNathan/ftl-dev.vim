@@ -78,6 +78,9 @@
     { "id": "syntax.builtin", "file": "syntax/freemarker.vim" },
     { "id": "syntax.method", "file": "syntax/freemarker.vim" },
     { "id": "syntax.directive_uniform", "file": "syntax/freemarker.vim" },
+    { "id": "syntax.named_param", "file": "syntax/freemarker.vim" },
+    { "id": "syntax.named_param_camel", "file": "syntax/freemarker.vim" },
+    { "id": "syntax.named_param_not_eqeq", "file": "syntax/freemarker.vim" },
     { "id": "syntax.current_syntax", "file": "syntax/freemarker.vim" }
   ]
 }

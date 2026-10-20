@@ -111,3 +111,33 @@ Execute (#assign / var / .method are three groups):
   let dcol = stridx(getline(1), '.now') + 1
   AssertEqual 'ftlMethod', SyntaxAt(1, dcol)
   bwipe!
+
+" coverage: syntax.named_param
+" coverage: syntax.named_param_camel
+" coverage: syntax.named_param_not_eqeq
+Execute (#ftl encoding= is ftlNamedParam):
+  new
+  setfiletype freemarker
+  call setline(1, '<#ftl encoding="UTF-8">')
+  syntax sync fromstart
+  let col = stridx(getline(1), 'encoding') + 1
+  AssertEqual 'ftlNamedParam', SyntaxAt(1, col)
+  bwipe!
+
+Execute (#ftl stripWhitespace= camel alias is ftlNamedParam):
+  new
+  setfiletype freemarker
+  call setline(1, '<#ftl stripWhitespace=true>')
+  syntax sync fromstart
+  let col = stridx(getline(1), 'stripWhitespace') + 1
+  AssertEqual 'ftlNamedParam', SyntaxAt(1, col)
+  bwipe!
+
+Execute (encoding== is not ftlNamedParam):
+  new
+  setfiletype freemarker
+  call setline(1, '<#if encoding=="x">')
+  syntax sync fromstart
+  let col = stridx(getline(1), 'encoding') + 1
+  AssertEqual 'ftlIdentifier', SyntaxAt(1, col)
+  bwipe!

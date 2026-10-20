@@ -6,6 +6,12 @@ Canonical version file: [`VERSION`](VERSION). Independent of the VS Code extensi
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-10-20
+
+### Added
+
+- Highlight known `#ftl` / `#setting` / `#include` named-param LHS (snake ∪ camel) as `ftlNamedParam` when followed by `=` (not `==`) — VS Code TextMate `#directive-named-param` parity (plans 0024/0026)
+
 ## [0.4.3] - 2026-10-14
 
 ### Changed

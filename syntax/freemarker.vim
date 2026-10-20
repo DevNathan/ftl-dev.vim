@@ -37,8 +37,15 @@ exe 'syn match ftlDirKeyword /#\%('.s:dirs.'\)\>/ contained'
 syn match ftlDirKeyword /#[a-zA-Z_][a-zA-Z0-9_.]*/ contained
 syn match ftlUserName /@[a-zA-Z_][a-zA-Z0-9_.]*/ contained
 
+" Known #ftl / #setting / #include named-param LHS (snake ∪ camel).
+" Sync with vsix TextMate #directive-named-param / DIRECTIVE_NAMED_PARAMS aliases.
+" Lookahead \%(\s*=[^=]\)\@= mirrors (?=\s*=[^=]) — avoids matching ==.
+" Defined after ftlIdentifier so this group wins on the same token.
+let s:named_params = 'encoding\|strip_whitespace\|stripWhitespace\|strip_text\|stripText\|strict_syntax\|strictSyntax\|attributes\|ns_prefixes\|nsPrefixes\|auto_esc\|autoEsc\|output_format\|outputFormat\|locale\|number_format\|numberFormat\|boolean_format\|booleanFormat\|date_format\|dateFormat\|time_format\|timeFormat\|datetime_format\|datetimeFormat\|time_zone\|timeZone\|sql_date_and_time_time_zone\|sqlDateAndTimeTimeZone\|c_format\|cFormat\|url_escaping_charset\|urlEscapingCharset\|output_encoding\|outputEncoding\|classic_compatible\|classicCompatible\|parse\|ignore_missing\|ignoreMissing'
+exe 'syn match ftlNamedParam /\<\%('.s:named_params.'\)\>\%(\s*=[^=]\)\@=/ contained'
+
 " Method before Identifier so `.now` wins over bare names
-syn cluster ftlExpr contains=ftlStringD,ftlStringS,ftlBuiltin,ftlMethod,ftlIdentifier,ftlNumber,ftlOperator,ftlBoolean
+syn cluster ftlExpr contains=ftlStringD,ftlStringS,ftlBuiltin,ftlMethod,ftlNamedParam,ftlIdentifier,ftlNumber,ftlOperator,ftlBoolean
 
 " transparent regions — only contained groups paint
 " CRITICAL: `/<\/\?#/` alone also matches the `<#` of comments `<#--…-->`, so
@@ -78,6 +85,7 @@ hi def link ftlDirKeyword Statement
 hi def link ftlUserName Type
 hi def link ftlBuiltin Special
 hi def link ftlMethod Function
+hi def link ftlNamedParam PreProc
 hi def link ftlIdentifier Identifier
 hi def link ftlNumber Number
 hi def link ftlOperator Operator
