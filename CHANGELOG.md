@@ -6,6 +6,12 @@ Canonical version file: [`VERSION`](VERSION). Independent of the VS Code extensi
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-10-21
+
+### Changed
+
+- `.gitattributes` enforces LF line endings (CRLF only for `*.ps1` / `*.cmd` / `*.bat`; binaries untouched), so `test/run.sh` runs under bash even on Windows checkouts with `core.autocrlf=true` (no more `pipefail: invalid option`) — see ftl-dev plan 0033
+
 ## [0.4.4] - 2026-10-20
 
 ### Added
