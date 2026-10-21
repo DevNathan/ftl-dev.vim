@@ -105,6 +105,8 @@ The runner:
 2. **`syntax_smoke.vim`** — sources `syntax/freemarker.vim` and **fails on E866/E475** (Vim NFA regexp mistakes)
 3. Vader suite + Neovim lua tests
 
+Before committing, run `bash test/check-forbidden-terms.sh` (forbidden-terms guard; the term list lives outside the repo and is supplied via `FTL_DEV_FORBIDDEN_TERMS` / `FTL_DEV_FORBIDDEN_TERMS_FILE`; without a list it prints `no term list; skipped`).
+
 ## Versioning / release
 
 1. Bump [`VERSION`](VERSION) and [`CHANGELOG.md`](CHANGELOG.md)
