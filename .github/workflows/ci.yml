@@ -11,6 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Forbidden-terms guard (list from secret; skipped when absent)
+        env:
+          FTL_DEV_FORBIDDEN_TERMS: ${{ secrets.FTL_DEV_FORBIDDEN_TERMS }}
+        run: bash test/check-forbidden-terms.sh
       - name: Install Vim and Neovim
         run: sudo apt-get update && sudo apt-get install -y vim-nox neovim python3
       - name: Run tests (100% inventory coverage)
