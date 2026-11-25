@@ -6,6 +6,14 @@ Canonical version file: [`VERSION`](VERSION). Independent of the VS Code extensi
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-25
+
+- Highlight HTML and embedded SQL in FreeMarker templates and complete the innermost HTML or FTL closing tag.
+- Edit either name in a paired FTL tag to update its partner as you type. Dotted names and square brackets are supported, and one undo restores both names.
+- Enable optional delimiter pairing and selection wrapping with `g:ftl_dev_delimiter_pairs`. The development profiles enable these mappings.
+- Improve indentation and closing-tag alignment for nested expressions, multiline tags and capture blocks, and provide an optional FTL fold expression.
+- Try both editors with writable examples and manual LSP completion. The runtime installs directly from Git. Completion, diagnostics and navigation require a separately configured language server.
+
 ## [0.4.5] - 2026-10-21
 
 ### Changed

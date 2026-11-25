@@ -334,14 +334,14 @@ Execute (CR between bare same-line list pair splits with body indent):
 
 " coverage: ftplugin.auto_close_after_slash
 " coverage: ftplugin.auto_close_after_slash_self
-" Case 1: <#assign r = 10 / → insert >
-Execute (after_slash self-close angle assign inserts >):
+" Case 1: <#assign r = 10 / is division
+Execute (after_slash preserves division after an assignment):
   new
   setfiletype freemarker
   call setline(1, '<#assign r = 10 /')
   set virtualedit=onemore
   call cursor(1, strlen(getline(1)) + 1)
-  AssertEqual '>', ftl_dev#close#after_slash()
+  AssertEqual '', ftl_dev#close#after_slash()
   set virtualedit&
   bwipe!
 
@@ -370,9 +370,9 @@ Execute (after_slash self-close skips when > already follows):
 Execute (imap / self-closes assign to />):
   new
   setfiletype freemarker
-  call setline(1, '<#assign r = 10 ')
+  call setline(1, '<#assign r = "text" ')
   call feedkeys("A/\<Esc>", 'xt')
-  AssertEqual '<#assign r = 10 />', getline(1)
+  AssertEqual '<#assign r = "text" />', getline(1)
   bwipe!
 
   new

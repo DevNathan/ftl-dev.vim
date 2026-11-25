@@ -40,7 +40,11 @@ Execute (Nu vimrc mutes stock-blue ftlComment):
   let ctermfg = synIDattr(sid, 'fg', 'cterm')
   Assert guifg !~? '^#80a0ff$'
   Assert ctermfg !=# '11'
-  Assert guifg =~? '^#6a9955$' || ctermfg =~? '^\%(8\|DarkGray\)$'
+  if synIDattr(hlID('Comment'), 'fg#') =~? '^#80a0ff$' || synIDattr(hlID('Comment'), 'fg', 'cterm') ==# '11'
+    Assert guifg =~? '^#6a9955$' || ctermfg =~? '^\%(8\|DarkGray\)$'
+  else
+    AssertEqual 'Comment', synIDattr(synIDtrans(sid), 'name')
+  endif
   bwipe!
 
 " coverage: syntax.comment_square

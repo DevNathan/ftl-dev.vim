@@ -1,57 +1,15 @@
 " Auto-close block directives (VS Code closeTag / Enter parity). Lightweight.
 
-let s:always_block = {
-      \ 'if':1, 'list':1, 'macro':1, 'function':1, 'attempt':1, 'compress':1,
-      \ 'escape':1, 'noescape':1, 'autoesc':1, 'noautoesc':1, 'transform':1,
-      \ 'switch':1, 'items':1,
-      \ }
-
-let s:mid_block = {
-      \ 'else':1, 'elseif':1, 'recover':1, 'case':1, 'default':1, 'sep':1,
-      \ }
-
-let s:capture = { 'assign':1, 'local':1, 'global':1 }
-
 " Parse a single-line pairable open tag. Returns {} or
 " { 'name': '#attempt', 'open': '<', 'close': '>' }
 function! ftl_dev#close#parse_pairable(line) abort
-  let t = substitute(a:line, '^\s*', '', '')
-  let t = substitute(t, '\s*$', '', '')
-  return s:parse_pairable_tag(t)
-endfunction
-
-function! s:parse_pairable_tag(t) abort
-  let m = matchlist(a:t, '^\([<\[]\)\([#@]\)\([a-zA-Z_][a-zA-Z0-9_.]*\)\>\(.*\)\([>\]]\)$')
-  if empty(m)
-    return {}
-  endif
-  let open = m[1]
-  let sigil = m[2]
-  let name = m[3]
-  let rest = m[4]
-  let close = m[5]
-  if (open ==# '<' && close !=# '>') || (open ==# '[' && close !=# ']')
-    return {}
-  endif
-  if rest =~# '/\s*$'
-    return {}
-  endif
-  if sigil ==# '#' && has_key(s:mid_block, name)
-    return {}
-  endif
-  if sigil ==# '@'
-    " user directive — always pair
-  elseif has_key(s:always_block, name)
-    " ok
-  elseif has_key(s:capture, name)
-    " Match = / ++ / -- / op= (avoid \\++ — E866 Misplaced + on Vim NFA)
-    if rest =~# '[=]\|++\|--\|[+*/%-]='
-      return {}
-    endif
-  else
-    return {}
-  endif
-  return { 'name': sigil . name, 'open': open, 'close': close }
+  let text = trim(a:line)
+  let state = ftl_dev#scan#state()
+  call ftl_dev#scan#line(state, 1, text)
+  if len(state.stack) != 1 | return {} | endif
+  let site = state.stack[0]
+  if site.col != 0 || site.endcol != strlen(text) - 1 | return {} | endif
+  return {'name': site.name, 'open': site.open, 'close': site.open ==# '<' ? '>' : ']'}
 endfunction
 
 function! s:closer_token(open) abort
@@ -68,75 +26,6 @@ function! s:same_line_closer(after, open) abort
   return a:after =~# pat
 endfunction
 
-function! s:should_pair_close(sigil, name, inner) abort
-  if a:sigil ==# '@'
-    return 1
-  endif
-  if has_key(s:always_block, a:name)
-    return 1
-  endif
-  if !has_key(s:capture, a:name)
-    return 0
-  endif
-  let body = substitute(a:inner, '/\s*$', '', '')
-  let body = substitute(body, '^\s*', '', '')
-  let body = substitute(body, '\s*$', '', '')
-  return body !~# '[=]\|++\|--\|[+*/%-]='
-endfunction
-
-function! s:apply_ftl_tag(stack, lnum, col, is_close, sigil, name, inner) abort
-  let key = a:sigil . a:name
-  if a:inner =~# '/\s*$'
-    return
-  endif
-  if a:sigil ==# '#' && has_key(s:mid_block, a:name)
-    return
-  endif
-  if a:is_close
-    let i = len(a:stack) - 1
-    while i >= 0
-      if a:stack[i].name ==# key
-        call remove(a:stack, i)
-        break
-      endif
-      let i -= 1
-    endwhile
-    return
-  endif
-  if !s:should_pair_close(a:sigil, a:name, a:inner)
-    return
-  endif
-  call add(a:stack, { 'name': key, 'lnum': a:lnum, 'col': a:col })
-endfunction
-
-" Push FTL tags from one buffer line onto stack (same bracket style).
-function! s:push_line_ftl_tags(stack, lnum, line, open_bracket) abort
-  let close_bracket = a:open_bracket ==# '<' ? '>' : ']'
-  " Escape [ / ] for NFA — raw `[` inside \(\) starts a collection.
-  let ob = a:open_bracket ==# '[' ? '\[' : '<'
-  let cb = close_bracket ==# ']' ? '\]' : '>'
-  let not_cb = close_bracket ==# ']' ? '[^]]*' : '[^>]*'
-  let i = 0
-  let len = strlen(a:line)
-  while i < len
-    let start = stridx(a:line, a:open_bracket, i)
-    if start < 0
-      break
-    endif
-    let rest = strpart(a:line, start)
-    " Allow `>` / `]` inside quoted strings only loosely: stop at first closer.
-    let m = matchlist(rest,
-          \ '^\(' . ob . '\)\(/\?\)\([#@]\)\([a-zA-Z_][a-zA-Z0-9_.]*\)\>' .
-          \ '\(' . not_cb . '\)\(' . cb . '\)')
-    if empty(m)
-      let i = start + 1
-      continue
-    endif
-    call s:apply_ftl_tag(a:stack, a:lnum, start, m[2] ==# '/', m[3], m[4], m[5])
-    let i = start + strlen(m[0])
-  endwhile
-endfunction
-
 " True when the open tag starting at content of `lnum` is still unclosed
 " after scanning the whole buffer (vsix isOpenStillUnclosed intent).
 function! ftl_dev#close#is_open_still_unclosed(lnum, open) abort
@@ -148,13 +37,8 @@ function! ftl_dev#close#is_open_still_unclosed(lnum, open) abort
   if content_col < 0
     return 0
   endif
-  let stack = []
-  let l = 1
-  while l <= line('$')
-    call s:push_line_ftl_tags(stack, l, getline(l), a:open.open)
-    let l += 1
-  endwhile
-  for s in stack
+  let state = ftl_dev#scan#before(line('$') + 1)
+  for s in state.stack
     if s.lnum == a:lnum && s.col == content_col && s.name ==# a:open.name
       return 1
     endif
@@ -233,6 +117,11 @@ function! ftl_dev#close#after_closer(ch) abort
   if !ftl_dev#close#enabled()
     return ''
   endif
+  let mark = get(b:, 'ftl_dev_self_close', [])
+  unlet! b:ftl_dev_self_close
+  if mark ==# [line('.'), col('.'), b:changedtick, a:ch]
+    return "\<BS>"
+  endif
   let align = ftl_dev#indent_align#after_closer(a:ch)
   if align !=# ''
     return align
@@ -248,28 +137,27 @@ function! ftl_dev#close#after_bracket(ch) abort
     return ''
   endif
   let line = getline('.')
-  let col = col('.')
-  let before = strpart(line, 0, col - 1)
-  let open = ftl_dev#close#parse_pairable(before)
-  if empty(open) || open.close !=# a:ch
-    return ''
-  endif
-  let closer = s:closer_token(open)
-  let after = strpart(line, col - 1)
-  " Skip when matching closer already follows (vsix autoClosePairOnCloser).
-  if after =~# '^' . escape(closer, '[]\.*$^~')
-    return ''
-  endif
-  " Skip when a matching closer exists later (same intent as cr() path 3).
-  if !ftl_dev#close#is_open_still_unclosed(line('.'), open)
-    return ''
-  endif
-  return closer . repeat("\<Left>", strlen(closer))
+  let offset = col('.') - 1
+  let n = line('.')
+  let state = ftl_dev#scan#before(n)
+  call ftl_dev#scan#line(state, n, strpart(line, 0, offset), 0)
+  if empty(state.stack) | return '' | endif
+  let site = state.stack[-1]
+  if site.endline != n || site.endcol != offset - 1 | return '' | endif
+  let closer = site.open . '/' . site.name . a:ch
+  if stridx(strpart(line, offset), closer) == 0 | return '' | endif
+  " Follow this opener through the rest of the file, including nested namesakes.
+  call ftl_dev#scan#line(state, n, strpart(line, offset), offset)
+  for later in range(n + 1, line('$'))
+    if index(state.stack, site) < 0 | return '' | endif
+    call ftl_dev#scan#line(state, later, getline(later), 0)
+  endfor
+  return index(state.stack, site) < 0 ? '' : closer . repeat("\<Left>", strlen(closer))
 endfunction
 
 " Innermost still-open FTL directive (same bracket style) before cursor's `</` / `[/`.
 " Scans buffer lines above + current line text excluding the close starter.
-function! s:find_unclosed_ftl(open_bracket) abort
+function! s:find_unclosed(open_bracket) abort
   let lnum = line('.')
   let col = col('.')
   let line = getline('.')
@@ -278,22 +166,23 @@ function! s:find_unclosed_ftl(open_bracket) abort
     return {}
   endif
   let text_before = strpart(before, 0, strlen(before) - 2)
-  let stack = []
-  let l = 1
-  while l < lnum
-    call s:push_line_ftl_tags(stack, l, getline(l), a:open_bracket)
-    let l += 1
-  endwhile
-  call s:push_line_ftl_tags(stack, lnum, text_before, a:open_bracket)
-  if empty(stack)
+  let state = ftl_dev#scan#before(lnum)
+  call ftl_dev#scan#line(state, lnum, text_before, 0)
+  if !empty(state.tag) || !empty(state.comments)
     return {}
   endif
-  return stack[len(stack) - 1]
+  let ftl = {}
+  for site in reverse(state.stack)
+    if site.open ==# a:open_bracket
+      let ftl = site
+      break
+    endif
+  endfor
+  return a:open_bracket ==# '<' ? ftl_dev#html#close_target(lnum, strlen(text_before) + 1, ftl) : ftl
 endfunction
 
 " After typing `/` (already inserted): self-close `>`/`]`, or expand FTL `</` / `[/`.
 " Must RETURN keys only (no append) — same constraint as cr() / after_bracket().
-" HTML closes are intentionally skipped (FTL stack only).
 function! ftl_dev#close#after_slash() abort
   if !ftl_dev#close#enabled()
     return ''
@@ -310,36 +199,66 @@ function! ftl_dev#close#after_slash() abort
   if !empty(cm)
     let open_br = cm[1]
     let close_br = open_br ==# '<' ? '>' : ']'
-    let top = s:find_unclosed_ftl(open_br)
+    let top = s:find_unclosed(open_br)
     if empty(top)
       return ''
     endif
-    let token = open_br . '/' . top.name . close_br
+    let consume = open_br ==# '[' && ftl_dev#pairs#consume(']') ? "\<Del>" : ''
     let close_start = strlen(before) - 2
     let prefix = strpart(line, 0, close_start)
     " AC6: rewrite indent when `</` / `[/` is alone on the line.
-    " Esc+cc replaces the line; CTRL-U drops cc's autoindent pad, then opener indent.
     if prefix !~# '\S'
       let indent = matchstr(getline(top.lnum), '^\s*')
-      return "\<Esc>cc\<C-u>" . indent . token
+      if indent !=# prefix
+        return consume . "\<Home>" . repeat("\<Del>", strlen(prefix)) . indent . "\<Right>\<Right>" . top.name . close_br
+      endif
     endif
     " Same-line / mid-line: keep prefix; append name + closer after `/`.
-    return top.name . close_br
+    return consume . top.name . close_br
   endif
 
-  " Case 1: self-close slash inside open directive → insert `>` or `]`.
-  " NFA-safe: no \w; word-end via \> ; use \| not [<\[] (] ends collections).
-  if before =~# '/[>\]]$'
+  " Only a slash at the top level of an unfinished directive can self-close.
+  let state = ftl_dev#scan#before(line('.'))
+  call ftl_dev#scan#line(state, line('.'), before, 0)
+  if empty(state.tag) || !empty(state.comments) || !ftl_dev#scan#self_close(state.tag)
     return ''
   endif
   let after = strpart(line, col - 1)
-  if after =~# '^[>\]]'
+  if after =~# '^\s*/*' . escape(state.tag.end, ']')
     return ''
   endif
-  let om = matchlist(before,
-        \ '\(<\|\[\)\([#@]\)\([a-zA-Z_][0-9A-Za-z_.]*\)\>[^>\]]*/$')
-  if empty(om)
+  let end = state.tag.end
+  let b:ftl_dev_self_close = [line('.'), col + 2, b:changedtick + 2, end]
+  return end
+endfunction
+
+function! ftl_dev#close#interpolation() abort
+  if !ftl_dev#close#enabled()
     return ''
   endif
-  return om[1] ==# '[' ? ']' : '>'
+  let prefix = strpart(getline('.'), 0, col('.') - 3)
+  let escapes = matchstr(prefix, '\\\+$')
+  if strlen(escapes) % 2 | return '' | endif
+  for id in synstack(line('.'), col('.') - 2)
+    if synIDattr(id, 'name') =~# '^ftl\%(Comment\|HtmlComment\|SqlComment\|SqlMarker\|RawString\)'
+      return ''
+    endif
+  endfor
+  if exists('b:ftl_dev_pair_marks')
+    let tail = strpart(getline('.'), col('.') - 1)
+    if tail[0] ==# '}' && index(b:ftl_dev_pair_marks, [line('$') - line('.'), tail]) < 0
+      return ''
+    endif
+    return ftl_dev#pairs#finish('}')
+  endif
+  return getline('.')[col('.') - 1] ==# '}' ? '' : "}\<Left>"
+endfunction
+
+function! ftl_dev#close#brace() abort
+  let offset = col('.') - 1
+  if ftl_dev#close#enabled() && getline('.')[offset] ==# '}'
+        \ && strpart(getline('.'), 0, offset) =~# '${[^{}]*$'
+    return "\<Right>"
+  endif
+  return '}'
 endfunction

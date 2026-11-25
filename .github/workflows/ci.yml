@@ -3,8 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -15,7 +19,41 @@ jobs:
         env:
           FTL_DEV_FORBIDDEN_TERMS: ${{ secrets.FTL_DEV_FORBIDDEN_TERMS }}
         run: bash test/check-forbidden-terms.sh
-      - name: Install Vim and Neovim
-        run: sudo apt-get update && sudo apt-get install -y vim-nox neovim python3
+      - name: Install Vim with Visual selection support
+        uses: rhysd/action-setup-vim@v1
+        with:
+          version: v9.1.1000
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          version: v0.11.5
+          neovim: true
       - name: Run tests (100% inventory coverage)
         run: bash test/run.sh
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check version and extract changelog
+        run: |
+          version=$(cat VERSION)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$GITHUB_REF_NAME" == "v$version" ]]
+          awk -v heading="[$version]" '
+            /^## / { if (found) exit; found = ($2 == heading); next }
+            found && /[^[:space:]]/ { content = 1 }
+            found { print }
+            END { if (!content) exit 1 }
+          ' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
+      - name: Publish the tagged Vim runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag \
+              --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi

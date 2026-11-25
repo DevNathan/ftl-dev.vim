@@ -28,16 +28,18 @@ fi
 echo "Coverage inventory: 100% of units tagged in vader cases."
 
 export VIMINIT=
+export XDG_STATE_HOME="$TEST/vendor/state"
 
 # Fail fast if syntax file itself is invalid on this Vim (catches E866/E475)
-vim -Nu "$TEST/vimrc" -S "$TEST/syntax_smoke.vim"
+vim -Nu "$TEST/vimrc" -i NONE -n -es -S "$TEST/syntax_smoke.vim"
 echo "Syntax smoke passed."
 
-vim -Nu "$TEST/vimrc" -c "Vader! $TEST/vader/*.vader" -c 'qa!'
+vim -Nu "$TEST/vimrc" -i NONE -n -es -c "Vader! $TEST/vader/*.vader" -c 'qa!'
 echo "Vader suite passed."
 
 if command -v nvim >/dev/null 2>&1; then
-  nvim --headless -u NONE \
+  nvim --headless -i NONE -n -u "$TEST/vimrc" -c "Vader! $TEST/vader/*.vader" -c "qa!"
+  nvim --headless -i NONE -u NONE \
     -c "set rtp^=$ROOT" \
     -c "luafile $TEST/lua/lsp_test.lua" \
     -c "qa!"
@@ -47,4 +49,5 @@ else
   exit 1
 fi
 
-echo "All vim tests passed (inventory 100% + vader + lua)."
+python3 "$TEST/linked-editing.py"
+echo "All vim tests passed."

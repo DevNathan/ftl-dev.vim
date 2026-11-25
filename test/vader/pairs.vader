@@ -1,0 +1,96 @@
+Before:
+  let g:ftl_dev_delimiter_pairs = 1
+  new
+  setfiletype freemarker
+
+After:
+  bwipe!
+  unlet! g:ftl_dev_delimiter_pairs
+
+Execute (each VSIX opening key creates its closer and places input between them):
+  for [open, close] in [['(', ')'], ['[', ']'], ['{', '}'], ['"', '"'], ["'", "'"]]
+    call setline(1, '')
+    call feedkeys('i' . open . 'x' . "\<Esc>", 'xt')
+    AssertEqual open . 'x' . close, getline(1)
+    call setline(1, '')
+    call feedkeys('i' . open . 'x' . close . 'y' . "\<Esc>", 'xt')
+    AssertEqual open . 'x' . close . 'y', getline(1)
+  endfor
+
+Execute (nested interpolation, indexing, square tags and slash completion cooperate):
+  for sample in ['${fn({"k": [1]})} done', '[#if xs[0]]', '[@greet /]']
+    call setline(1, '')
+    call feedkeys('i' . sample . "\<Esc>", 'xt')
+    AssertEqual sample . (sample =~# '^\[#if' ? '[/#if]' : ''), getline(1)
+  endfor
+  call setline(1, ['[#if ok]', ''])
+  call cursor(2, 1)
+  call feedkeys("i[/\<Esc>", 'xt')
+  AssertEqual '[/#if]', getline(2)
+
+Execute (string and comment exclusions, interpolation inside a quoted attribute):
+  for sample in ['<#assign a = "a| b">', '<#assign a = r"a| b">', '<#-- a| b -->', '<p title="a| b">', '<!-- a| b -->']
+    let where = stridx(sample, '|')
+    call setline(1, substitute(sample, '|', '', ''))
+    call cursor(1, where + 1)
+    call feedkeys("i(\<Esc>", 'xt')
+    AssertEqual substitute(sample, '|', '(', ''), getline(1)
+  endfor
+  call setline(1, '<p title="">')
+  call cursor(1, 11)
+  call feedkeys("i${fn(1)}\<Esc>", 'xt')
+  AssertEqual '<p title="${fn(1)}">', getline(1)
+  call setline(1, ['<#assign sqlExample>', "SELECT 'a b' -- note", '</#assign>'])
+  for c in [10, 17]
+    call cursor(2, c)
+    call feedkeys("i(\<Esc>", 'xt')
+  endfor
+  AssertEqual "SELECT 'a( b' --( note", getline(2)
+
+  call cursor(2, 1)
+  call feedkeys("A(\<Esc>", 'xt')
+  AssertEqual "SELECT 'a( b' --( note(", getline(2)
+
+Execute (wrap a word in the shared mixed template and undo it):
+  let sample = globpath(&rtp, 'test/fixtures/mixed.ftl', 0, 1)[0]
+  call setline(1, readfile(sample))
+  call cursor(4, stridx(getline(4), 'title') + 1)
+  call feedkeys('viw(', 'xt')
+  AssertEqual '  <h1>${(title)}</h1>', getline(4)
+  call feedkeys('u', 'xt')
+  AssertEqual readfile(sample), getline(1, '$')
+
+Execute (skip and backspace affect only generated delimiters):
+  call setline(1, '')
+  let escaped = '<#assign s = "a\"b">'
+  call feedkeys('i' . escaped . "\<Esc>", 'xt')
+  AssertEqual escaped, getline(1)
+  call setline(1, 'word')
+  call feedkeys("gg0i(\<Esc>", 'xt')
+  AssertEqual '(word', getline(1)
+  call setline(1, ')')
+  call feedkeys("gg0i)\<Esc>", 'xt')
+  AssertEqual '))', getline(1)
+  call setline(1, '')
+  call feedkeys("i([\<BS>x)y\<Esc>", 'xt')
+  AssertEqual '(x)y', getline(1)
+
+Execute (Visual surround preserves Unicode, multiline selections and registers):
+  for [open, close] in [['(', ')'], ['[', ']'], ['{', '}'], ['"', '"'], ["'", "'"]]
+    call setline(1, ['a한글z', 'second'])
+    let saved = getreg('"')
+    call feedkeys('gg0lvl' . open, 'xt')
+    AssertEqual 'a' . open . '한글' . close . 'z', getline(1)
+    AssertEqual saved, getreg('"')
+    call feedkeys('ggVj' . open, 'xt')
+    AssertEqual [open . 'a' . open . '한글' . close . 'z', 'second' . close], getline(1, 2)
+    call feedkeys('u', 'xt')
+    AssertEqual ['a' . open . '한글' . close . 'z', 'second'], getline(1, 2)
+  endfor
+
+Execute (leaving the filetype removes its optional maps):
+  setlocal filetype=text
+  AssertEqual '', maparg('(', 'i')
+  AssertEqual '', maparg('(', 'x')
+  AssertEqual '', maparg('<BS>', 'i')
+  Assert !exists('b:ftl_dev_pair_marks')

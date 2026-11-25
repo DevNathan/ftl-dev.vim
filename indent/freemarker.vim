@@ -8,7 +8,8 @@ setlocal indentexpr=GetFreemarkerIndent()
 " Keep keys simple: `[` / `<#` in indentkeys break :set on Vim 8.1 (E518).
 setlocal indentkeys=o,O,!^F
 
+let b:undo_indent = 'setlocal indentexpr< indentkeys<'
+
 function! GetFreemarkerIndent() abort
-  let lines = getline(1, '$')
-  return ftl_dev#indent#compute(v:lnum, lines, shiftwidth())
+  return ftl_dev#indent#for_line(ftl_dev#scan#before(v:lnum), getline(v:lnum), shiftwidth())
 endfunction

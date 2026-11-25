@@ -1,0 +1,85 @@
+Execute (self-close does not eat division, paths, strings, or a deliberate second closer):
+  new
+  setfiletype freemarker
+  for sample in ['<#assign n = 6 / 2>', '<#include "a/b.ftl" />', '[@greet /]', '<#if (x > 2)>', '<#-- <#assign / -->']
+    call setline(1, '')
+    call feedkeys("i" . sample . "\<Esc>", 'xt')
+    let expected = sample ==# '<#if (x > 2)>' ? sample . '</#if>' : sample
+    AssertEqual expected, getline(1)
+  endfor
+  call setline(1, '')
+  call feedkeys("i<@greet />>\<Esc>", 'xt')
+  AssertEqual '<@greet />>', getline(1)
+  bwipe!
+
+Execute (inline and multiline FTL opens pair at the actual tag end):
+  new
+  setfiletype freemarker
+  call setline(1, 'hello <@lib.note text="2 > 1"')
+  call feedkeys("A>\<Esc>", 'xt')
+  AssertEqual 'hello <@lib.note text="2 > 1"></@lib.note>', getline(1)
+  call setline(1, ['[#if', '  things[0'])
+  call cursor(2, 1)
+  call feedkeys("A]]\<Esc>", 'xt')
+  AssertEqual '  things[0]][/#if]', getline(2)
+  bwipe!
+
+Execute (tabs, inline pairs, branch aliases and comments produce correct indentation):
+  new
+  setfiletype freemarker
+  setlocal tabstop=8 shiftwidth=2
+  AssertEqual 10, ftl_dev#indent#compute(2, ["\t<#forEach item in items>", 'body'], 2)
+  AssertEqual 0, ftl_dev#indent#compute(2, ['<#if x>yes</#if>', 'outside'], 2)
+  AssertEqual 0, ftl_dev#indent#compute(3, ['<#--', '<#if x>', '-->'], 2)
+  AssertEqual 2, ftl_dev#indent#compute(3, ['  [#switch x]', '     content', '[#on 1]'], 2)
+  bwipe!
+
+Execute (matchit handles square branches with arguments and include captures literal paths):
+  runtime! macros/matchit.vim
+  new
+  setfiletype freemarker
+  call setline(1, ['[#if x]', 'yes', '[#else]', 'no', '[/#if]'])
+  call cursor(1, 1)
+  normal %
+  AssertEqual 3, line('.')
+  normal %
+  AssertEqual 5, line('.')
+  AssertEqual 'dir/lib demo.ftl', matchstr('[#import "dir/lib demo.ftl" as lib]', &l:include)
+  bwipe!
+
+Execute (ftldoc, interpolation, raw strings and directive comments retain their syntax):
+  new
+  setfiletype freemarker
+  let lines = ['<#-- @param {string} user description -->', '<#assign p = "${user}">', '<#assign p = r"${user}">', '<#if x <#-- note --> && y>']
+  call setline(1, lines)
+  syntax sync fromstart
+  AssertEqual 'ftlDocTag', SyntaxAt(1, 6)
+  AssertEqual 'ftlDocParamType', SyntaxAt(1, 14)
+  AssertEqual 'ftlDocParam', SyntaxAt(1, 22)
+  AssertEqual 'ftlIdentifier', SyntaxAt(2, stridx(lines[1], 'user') + 1)
+  AssertEqual 'ftlRawString', SyntaxAt(3, stridx(lines[2], 'user') + 1)
+  AssertEqual 'ftlComment', SyntaxAt(4, stridx(lines[3], 'note') + 1)
+  AssertEqual 'ftlIdentifier', SyntaxAt(4, stridx(lines[3], 'y') + 1)
+  bwipe!
+
+Execute (typing a full interpolation leaves one closing brace):
+  new
+  setfiletype freemarker
+  call feedkeys("i${user} text\<Esc>", 'xt')
+  AssertEqual '${user} text', getline(1)
+  call setline(1, '<#--  -->')
+  call cursor(1, 6)
+  call feedkeys("i${\<Esc>", 'xt')
+  AssertEqual '<#-- ${ -->', getline(1)
+  bwipe!
+
+Execute (adjacent blocks fold separately and a self-closing tag stays outside):
+  new
+  setfiletype freemarker
+  call setline(1, ['<#if x>', 'one', '</#if>', '[#if y]', 'two', '[/#if]', '<@single />'])
+  setlocal foldmethod=expr foldexpr=ftl_dev#fold#level(v:lnum) foldlevel=0
+  normal! zxzM
+  AssertEqual 3, foldclosedend(1)
+  AssertEqual 4, foldclosed(5)
+  AssertEqual -1, foldclosed(7)
+  bwipe!

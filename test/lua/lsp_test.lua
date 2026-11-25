@@ -48,7 +48,7 @@ vim.api.nvim_buf_get_name = function()
   return "/tmp/x.ftl"
 end
 
-lsp.setup({ cmd = { "ftl-dev-ls", "--stdio" } })
+lsp.setup({ cmd = { "ftl-dev-ls", "--stdio" }, root_dir = "/tmp" })
 assert_true(#notified == 0, "setup with cmd should not error-notify")
 assert_true(#started == 1, "vim.lsp.start should be called")
 assert_true(started[1].name == "ftl-dev", "lsp name")

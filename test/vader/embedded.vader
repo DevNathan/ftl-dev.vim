@@ -1,0 +1,68 @@
+Execute (HTML, SQL and FTL switch in the same document):
+  new
+  setfiletype freemarker
+  let sample = globpath(&rtp, 'test/fixtures/mixed.ftl', 0, 1)[0]
+  call setline(1, readfile(sample))
+  AssertEqual 'ftlHtmlTagName', SyntaxAt(3, 2)
+  AssertEqual 'ftlHtmlAttribute', SyntaxAt(3, stridx(getline(3), 'data-title') + 1)
+  AssertEqual 'ftlIdentifier', SyntaxAt(3, stridx(getline(3), '${title}') + 3)
+  AssertEqual 'ftlSqlKeyword', SyntaxAt(7, 1)
+  AssertEqual 'ftlSqlBind', SyntaxAt(8, stridx(getline(8), '@고객') + 2)
+  AssertEqual 'ftlIdentifier', SyntaxAt(8, stridx(getline(8), '${title}') + 3)
+  AssertEqual 'ftlSqlKeyword', SyntaxAt(14, 1)
+  AssertEqual 'ftlSqlQuoteEscape', SyntaxAt(14, stridx(getline(14), "''") + 1)
+  AssertNotEqual 'ftlSqlKeyword', SyntaxAt(17, stridx(getline(17), 'SELECT') + 1)
+  AssertEqual 'ftlHtmlTagName', SyntaxAt(19, 3)
+  bwipe!
+
+Execute (SQL comments and quotes stop at the capture end, markers apply once):
+  new
+  setfiletype freemarker
+  call setline(1, ['<#-- @LANG SQL -->', '', '<#global q in ns>SELECT', "  /* SELECT <p>", '</#global><p>SELECT</p>', '<#-- @lang sql -->', 'visible text', '<#assign q>SELECT</#assign>', '<#assign SQLCode>-- SELECT', "'' 'it''s' 'unfinished", '</#assign>SELECT', '<#assign sqlName = "SELECT">'])
+  AssertEqual 'ftlSqlKeyword', SyntaxAt(3, stridx(getline(3), 'SELECT') + 1)
+  AssertEqual 'ftlSqlComment', SyntaxAt(4, 6)
+  AssertEqual 'ftlHtmlTagName', SyntaxAt(5, stridx(getline(5), '<p') + 2)
+  AssertNotEqual 'ftlSqlKeyword', SyntaxAt(8, stridx(getline(8), 'SELECT') + 1)
+  AssertEqual 'ftlSqlComment', SyntaxAt(9, stridx(getline(9), '--') + 1)
+  AssertEqual 'ftlSqlQuoteEscape', SyntaxAt(10, stridx(getline(10), "''s") + 1)
+  AssertEqual 'ftlDirKeyword', SyntaxAt(11, 4)
+  AssertNotEqual 'ftlSqlString', SyntaxAt(11, stridx(getline(11), 'SELECT') + 1)
+  AssertEqual 'ftlStringD', SyntaxAt(12, stridx(getline(12), 'SELECT') + 1)
+  bwipe!
+
+Execute (slash closes the innermost HTML or FTL tag and preserves trailing text):
+  new
+  setfiletype freemarker
+  call setline(1, ['<#if visible>', '  <Section data-test="<fake>">', '    <br><x-icon/><b>x</B>', '    <!-- <aside> </#if> <#list ghosts as x> -->', '    < tail'])
+  call cursor(5, 5)
+  call feedkeys("a/\<Esc>", 'xt')
+  AssertEqual '  </Section> tail', getline(5)
+  call setline(5, '  </Section>')
+  call append(5, '<')
+  call cursor(6, 1)
+  call feedkeys("A/\<Esc>", 'xt')
+  AssertEqual '</#if>', getline(6)
+  bwipe!
+
+Execute (HTML-looking SQL strings and comments never become HTML close targets):
+  new
+  setfiletype freemarker
+  call setline(1, ['<article>', '<#assign sqlReport>', "SELECT '<widget>' -- <body> </#assign> <#if ignored>", '<'])
+  call cursor(4, 1)
+  call feedkeys("A/\<Esc>", 'xt')
+  AssertEqual '</#assign>', getline(4)
+  call append(4, '<')
+  call cursor(5, 1)
+  call feedkeys("A/\<Esc>", 'xt')
+  AssertEqual '</article>', getline(5)
+  bwipe!
+
+Execute (nested expression delimiters keep FTL tokens inside HTML and SQL):
+  new
+  setfiletype freemarker
+  call setline(1, ['<div data-x="${ {"key": value}.key }">', '[#if rows[0] == wanted]<p>OK</p>[/#if]', '<#assign sqlX>SELECT <#if (x > 1) && enabled>1</#if></#assign>'])
+  AssertEqual 'ftlMethod', SyntaxAt(1, stridx(getline(1), '.key') + 1)
+  AssertEqual 'ftlIdentifier', SyntaxAt(2, stridx(getline(2), 'wanted') + 1)
+  AssertEqual 'ftlHtmlTagName', SyntaxAt(2, stridx(getline(2), '<p>') + 2)
+  AssertEqual 'ftlIdentifier', SyntaxAt(3, stridx(getline(3), 'enabled') + 1)
+  bwipe!
