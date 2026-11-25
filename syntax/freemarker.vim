@@ -25,7 +25,7 @@ syn match ftlDocParam /\[\?\zs[A-Za-z_][A-Za-z0-9_.]*/ contained
 syn match ftlDocTag /\c@returns\?\>/ contained nextgroup=ftlDocType skipwhite
 syn match ftlDocType /{[^}]*}/ contained
 
-let s:dirs = 'assign\|attempt\|autoesc\|break\|case\|compress\|continue\|default\|else\|elseif\|escape\|fallback\|flush\|ftl\|function\|global\|if\|import\|include\|items\|list\|local\|lt\|macro\|nested\|noautoesc\|noescape\|noparse\|nt\|outputformat\|recover\|recurse\|return\|rt\|sep\|setting\|stop\|switch\|t\|transform\|visit'
+let s:dirs = join(ftl_dev#complete#directives(), '\|')
 
 " --- atoms (no [\w] inside collections) ---
 " [?] = literal question mark (avoid bare ? / \? quantifier ambiguity)

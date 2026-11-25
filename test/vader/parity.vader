@@ -12,6 +12,29 @@ Execute (self-close does not eat division, paths, strings, or a deliberate secon
   AssertEqual '<@greet />>', getline(1)
   bwipe!
 
+Execute (slash after a call permits self-closing, explicit closing and division):
+  for pairing in [0, 1]
+    let g:ftl_dev_delimiter_pairs = pairing
+    new
+    setfiletype freemarker
+    for [typed, expected] in [
+          \ ['<#assign test = cost() /', '<#assign test = cost() />'],
+          \ ['<#assign test = cost() />tail', '<#assign test = cost() />tail'],
+          \ ['<#assign test = cost() / 2>', '<#assign test = cost() / 2>'],
+          \ ['[#assign test = cost() /]', '[#assign test = cost() /]'],
+          \ ['[#assign test = cost() / fn([1])]', '[#assign test = cost() / fn([1])]']]
+      call setline(1, '')
+      call feedkeys('i' . typed . "\<Esc>", 'xt')
+      AssertEqual expected, getline(1)
+    endfor
+    call setline(1, '<#assign test = cost() >tail')
+    call cursor(1, stridx(getline(1), '>') + 1)
+    call feedkeys("i/>\<Esc>", 'xt')
+    AssertEqual '<#assign test = cost() />tail', getline(1)
+    bwipe!
+  endfor
+  unlet g:ftl_dev_delimiter_pairs
+
 Execute (inline and multiline FTL opens pair at the actual tag end):
   new
   setfiletype freemarker

@@ -46,6 +46,10 @@ Then `:PlugInstall`.
 
 Highlight groups are **layered** (`ftlDirKeyword`, `ftlIdentifier`, `ftlMethod`, `ftlBuiltin`, …) and **linked to the colorscheme** (`Statement`, `Identifier`, `Function`, `Special`, …). Do not hardcode near-white `guifg` — that vanishes on light terminal themes. Override with `:hi link ftlIdentifier MyGroup` if you want custom colours.
 
+### Manual directive completion
+
+With a FreeMarker buffer in Insert mode, type `<#assig`, press `Ctrl-X`, then `Ctrl-O`, and accept `assign` with `Ctrl-Y` after selecting it. Square-bracket directive names work the same way. The runtime supplies these names locally. Completion for variables, functions and built-ins uses a configured language server.
+
 ### Mixed HTML and SQL templates
 
 Vim and Neovim use the same syntax rules for HTML elements, attributes, entities and FTL expressions. With syntax enabled, typing `</` completes the innermost open HTML element or FTL block. Void elements such as `br` and self-closing tags are skipped.

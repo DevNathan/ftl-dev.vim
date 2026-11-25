@@ -117,6 +117,17 @@ function! ftl_dev#close#after_closer(ch) abort
   if !ftl_dev#close#enabled()
     return ''
   endif
+  " A slash after a call can still be division. Keep the tag closer ahead
+  " of the cursor until the user types it, even after entering a divisor.
+  if exists('b:ftl_dev_slash_tail') && a:ch ==# b:ftl_dev_slash_tail[1][0]
+        \ && b:ftl_dev_slash_tail ==# [line('$') - line('.'), strpart(getline('.'), col('.') - 1)]
+    let state = ftl_dev#scan#before(line('.'))
+    call ftl_dev#scan#line(state, line('.'), strpart(getline('.'), 0, col('.') - 2), 0)
+    if !empty(state.tag) && state.tag.end ==# a:ch && !state.tag.depth && empty(state.tag.quote) && empty(state.comments)
+      unlet b:ftl_dev_slash_tail
+      return "\<Del>"
+    endif
+  endif
   let mark = get(b:, 'ftl_dev_self_close', [])
   unlet! b:ftl_dev_self_close
   if mark ==# [line('.'), col('.'), b:changedtick, a:ch]
@@ -220,10 +231,25 @@ function! ftl_dev#close#after_slash() abort
   " Only a slash at the top level of an unfinished directive can self-close.
   let state = ftl_dev#scan#before(line('.'))
   call ftl_dev#scan#line(state, line('.'), before, 0)
-  if empty(state.tag) || !empty(state.comments) || !ftl_dev#scan#self_close(state.tag)
+  let tag = state.tag
+  if empty(tag) || !empty(state.comments) || tag.closing || tag.depth || !empty(tag.quote)
     return ''
   endif
   let after = strpart(line, col - 1)
+  let call_rhs = tag.sigil ==# '#' && index(['assign', 'local', 'global'], tag.name) >= 0
+        \ && tag.operator && tag.body =~# ')\s*/$'
+  if !call_rhs && !ftl_dev#scan#self_close(tag)
+    return ''
+  endif
+  if after[0] ==# tag.end
+    let b:ftl_dev_slash_tail = [line('$') - line('.'), after]
+    return ''
+  endif
+  if call_rhs
+    if after =~# '\S' | return '' | endif
+    let b:ftl_dev_slash_tail = [line('$') - line('.'), tag.end . after]
+    return tag.end . "\<C-G>U\<Left>"
+  endif
   if after =~# '^\s*/*' . escape(state.tag.end, ']')
     return ''
   endif

@@ -6,6 +6,11 @@ Canonical version file: [`VERSION`](VERSION). Independent of the VS Code extensi
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-25
+
+- Offer manual completion for FreeMarker directive names in a standalone install. Type `<#assig` and press `Ctrl-X Ctrl-O` to complete `assign`.
+- Reuse the closing delimiter when typing `<#assign test = cost() />`. A divisor can still be entered after the slash.
+
 ## [0.5.0] - 2026-11-25
 
 - Highlight HTML and embedded SQL in FreeMarker templates and complete the innermost HTML or FTL closing tag.

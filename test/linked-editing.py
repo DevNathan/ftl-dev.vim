@@ -17,7 +17,7 @@ def run_session(editor, script, fixture, dev):
                 str(here / "fixtures" / fixture), "-S", str(here / script)]
     with tempfile.TemporaryDirectory() as tmp:
         result = Path(tmp, "result")
-        env = {**os.environ, "FTL_TEST_RESULT": str(result)}
+        env = {**os.environ, "FTL_TEST_RESULT": str(result), "FTL_TEST_LSP": str(int(dev))}
         env.setdefault("XDG_STATE_HOME", tmp)
         # Keep stdin open while timer callbacks return control to the input loop.
         with subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
@@ -36,5 +36,4 @@ def run_session(editor, script, fixture, dev):
 dev = sys.argv[1:] == ["--dev"]
 for editor in ("vim", "nvim"):
     run_session(editor, "linked-editing.vim", "linked-tags.ftl", dev)
-    if dev:
-        run_session(editor, "completion-menu.vim", "main.ftl", dev)
+    run_session(editor, "completion-menu.vim", "main.ftl", dev)

@@ -58,6 +58,22 @@ let b:undo_ftplugin =
       \ . " | silent! xunmap <buffer> <LocalLeader>c"
       \ . " | unlet! b:match_words b:ftl_dev_self_close b:ftl_dev_scan"
 
+if empty(&l:omnifunc)
+  setlocal omnifunc=ftl_dev#complete#omni
+  let b:undo_ftplugin .= ' | if &l:omnifunc ==# "ftl_dev#complete#omni" | setlocal omnifunc< | endif'
+  " On editors with a buffer-local completeopt, show even a single match.
+  if empty(&l:completeopt) && index(split(&completeopt, ','), 'menuone') < 0
+    let &l:completeopt = join(filter(split(&completeopt, ','), 'v:val !=# "menu"') + ['menuone'], ',')
+    let b:undo_ftplugin .= ' | setlocal completeopt<'
+  endif
+endif
+
+augroup ftl_dev_slash
+  autocmd! * <buffer>
+  autocmd InsertLeave,BufLeave <buffer> unlet! b:ftl_dev_slash_tail b:ftl_dev_self_close
+augroup END
+let b:undo_ftplugin .= ' | execute "autocmd! ftl_dev_slash * <buffer>" | unlet! b:ftl_dev_slash_tail'
+
 if get(g:, 'ftl_dev_linked_editing', 1)
   call ftl_dev#linked#reset()
   augroup ftl_dev_linked_editing
